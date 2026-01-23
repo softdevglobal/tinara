@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FileText, Plus } from "lucide-react";
 import { InvoiceDashboard } from "@/components/InvoiceDashboard";
+import { InvoiceStats } from "@/components/InvoiceStats";
 import { AppLayout } from "@/components/AppLayout";
 import { useApp } from "@/context/AppContext";
 
@@ -29,6 +30,9 @@ const Index = () => {
           <span className="hidden sm:inline">New Invoice</span>
         </button>
       </div>
+
+      {/* Stats */}
+      {!showNewForm && <InvoiceStats invoices={invoices} />}
 
       <InvoiceDashboard
         invoices={invoices}
