@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Send } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Send, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invoiceFormSchema, InvoiceFormData, LineItem } from "@/lib/invoice-schema";
+import { Invoice } from "@/data/invoices";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 interface NewInvoiceFormProps {
   onBack: () => void;
   onSubmit: (data: InvoiceFormData) => void;
+  editingInvoice?: Invoice;
 }
 
 function generateId(): string {
@@ -42,24 +44,61 @@ const defaultLineItem: () => LineItem = () => ({
   unitPrice: 0,
 });
 
-export function NewInvoiceForm({ onBack, onSubmit }: NewInvoiceFormProps) {
+export function NewInvoiceForm({ onBack, onSubmit, editingInvoice }: NewInvoiceFormProps) {
   const { toast } = useToast();
-  const [lineItems, setLineItems] = useState<LineItem[]>([defaultLineItem()]);
-  const [taxRate, setTaxRate] = useState(10);
+  const isEditing = !!editingInvoice;
+
+  // Initialize line items based on editing mode
+  const getInitialLineItems = (): LineItem[] => {
+    if (editingInvoice) {
+      // For editing, create a single line item with the total (since we don't store line items)
+      return [{
+        id: generateId(),
+        description: editingInvoice.projectName || "Services",
+        quantity: 1,
+        unitPrice: editingInvoice.total,
+      }];
+    }
+    return [defaultLineItem()];
+  };
+
+  const [lineItems, setLineItems] = useState<LineItem[]>(getInitialLineItems);
+  const [taxRate, setTaxRate] = useState(editingInvoice ? 0 : 10);
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
-      clientName: "",
+      clientName: editingInvoice?.clientName || "",
       clientEmail: "",
-      projectName: "",
-      issueDate: new Date(),
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-      lineItems: [defaultLineItem()],
-      taxRate: 10,
+      projectName: editingInvoice?.projectName || "",
+      issueDate: editingInvoice ? new Date(editingInvoice.date) : new Date(),
+      dueDate: editingInvoice 
+        ? new Date(editingInvoice.dueDate) 
+        : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      lineItems: getInitialLineItems(),
+      taxRate: editingInvoice ? 0 : 10,
       notes: "",
     },
   });
+
+  // Reset form when editingInvoice changes
+  useEffect(() => {
+    if (editingInvoice) {
+      const items = getInitialLineItems();
+      setLineItems(items);
+      setTaxRate(0);
+      form.reset({
+        clientName: editingInvoice.clientName,
+        clientEmail: "",
+        projectName: editingInvoice.projectName,
+        issueDate: new Date(editingInvoice.date),
+        dueDate: new Date(editingInvoice.dueDate),
+        lineItems: items,
+        taxRate: 0,
+        notes: "",
+      });
+    }
+  }, [editingInvoice]);
 
   const handleAddLineItem = () => {
     const newItem = defaultLineItem();
@@ -120,7 +159,7 @@ export function NewInvoiceForm({ onBack, onSubmit }: NewInvoiceFormProps) {
 
       <div className="invoice-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-6">
-          Create New Invoice
+          {isEditing ? `Edit Invoice #${editingInvoice.number}` : "Create New Invoice"}
         </h2>
 
         <Form {...form}>
@@ -247,7 +286,6 @@ export function NewInvoiceForm({ onBack, onSubmit }: NewInvoiceFormProps) {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
                           initialFocus
                           className="p-3 pointer-events-auto"
                         />
@@ -304,8 +342,17 @@ export function NewInvoiceForm({ onBack, onSubmit }: NewInvoiceFormProps) {
                 Cancel
               </Button>
               <Button type="submit">
-                <Send className="h-4 w-4 mr-2" />
-                Create Invoice
+                {isEditing ? (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Create Invoice
+                  </>
+                )}
               </Button>
             </div>
           </form>

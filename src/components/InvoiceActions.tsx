@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, CheckCircle, Mail, Download, Trash2 } from "lucide-react";
+import { MoreHorizontal, CheckCircle, Mail, Download, Trash2, Pencil } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 interface InvoiceActionsProps {
   invoice: Invoice;
+  onEdit: (invoice: Invoice) => void;
   onMarkPaid: (id: string) => void;
   onSendReminder: (invoice: Invoice) => void;
   onDownloadPdf: (invoice: Invoice) => void;
@@ -30,6 +31,7 @@ interface InvoiceActionsProps {
 
 export function InvoiceActions({
   invoice,
+  onEdit,
   onMarkPaid,
   onSendReminder,
   onDownloadPdf,
@@ -49,7 +51,17 @@ export function InvoiceActions({
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-48 bg-card">
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(invoice);
+            }}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit Invoice
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
