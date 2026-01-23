@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { invoices as initialInvoices, Invoice } from "@/data/invoices";
-import { clients as initialClients, Client } from "@/data/clients";
+import { Invoice } from "@/data/invoices";
+import { Client } from "@/data/clients";
 import { InvoiceFilters } from "./InvoiceFilters";
 import { InvoiceListItem } from "./InvoiceListItem";
 import { InvoiceCard } from "./InvoiceCard";
@@ -14,13 +14,22 @@ type StatusFilter = "all" | "Opened" | "Paid" | "Overdue";
 type View = "list" | "detail" | "new" | "edit";
 
 interface InvoiceDashboardProps {
+  invoices: Invoice[];
+  clients: Client[];
+  onUpdateInvoices: React.Dispatch<React.SetStateAction<Invoice[]>>;
+  onAddClient: (client: Client) => void;
   showNewForm?: boolean;
   onCloseNewForm?: () => void;
 }
 
-export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboardProps) {
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
-  const [clients, setClients] = useState<Client[]>(initialClients);
+export function InvoiceDashboard({
+  invoices,
+  clients,
+  onUpdateInvoices,
+  onAddClient,
+  showNewForm,
+  onCloseNewForm,
+}: InvoiceDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -59,7 +68,7 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
   }, [invoices, searchQuery, statusFilter]);
 
   const handleMarkPaid = (id: string) => {
-    setInvoices((prev) =>
+    onUpdateInvoices((prev) =>
       prev.map((inv) =>
         inv.id === id
           ? { ...inv, status: "Paid" as const, dueDaysOverdue: 0, dueLabel: "" }
@@ -89,7 +98,7 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
   };
 
   const handleDelete = (id: string) => {
-    setInvoices((prev) => prev.filter((inv) => inv.id !== id));
+    onUpdateInvoices((prev) => prev.filter((inv) => inv.id !== id));
     toast({
       title: "Invoice deleted",
       description: "The invoice has been removed.",
@@ -99,10 +108,6 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
   const handleEdit = (invoice: Invoice) => {
     setEditingInvoice(invoice);
     setView("edit");
-  };
-
-  const handleAddClient = (client: Client) => {
-    setClients((prev) => [client, ...prev]);
   };
 
   const handleCreateInvoice = (data: InvoiceFormData) => {
@@ -127,7 +132,7 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
       currency: "AUD",
     };
 
-    setInvoices((prev) => [newInvoice, ...prev]);
+    onUpdateInvoices((prev) => [newInvoice, ...prev]);
     setView("list");
     onCloseNewForm?.();
     toast({
@@ -165,7 +170,7 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
       }
     }
 
-    setInvoices((prev) =>
+    onUpdateInvoices((prev) =>
       prev.map((inv) =>
         inv.id === editingInvoice.id
           ? {
@@ -204,7 +209,7 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
         onBack={handleBackToList} 
         onSubmit={handleCreateInvoice}
         clients={clients}
-        onAddClient={handleAddClient}
+        onAddClient={onAddClient}
       />
     );
   }
@@ -216,7 +221,7 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
         onSubmit={handleUpdateInvoice}
         editingInvoice={editingInvoice}
         clients={clients}
-        onAddClient={handleAddClient}
+        onAddClient={onAddClient}
       />
     );
   }
