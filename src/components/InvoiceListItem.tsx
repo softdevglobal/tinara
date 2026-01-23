@@ -1,11 +1,16 @@
 import { cn } from "@/lib/utils";
 import { Invoice } from "@/data/invoices";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
-import { Calendar, ChevronRight } from "lucide-react";
+import { InvoiceActions } from "./InvoiceActions";
+import { Calendar } from "lucide-react";
 
 interface InvoiceListItemProps {
   invoice: Invoice;
   onClick?: () => void;
+  onMarkPaid: (id: string) => void;
+  onSendReminder: (invoice: Invoice) => void;
+  onDownloadPdf: (invoice: Invoice) => void;
+  onDelete: (id: string) => void;
 }
 
 function formatCurrency(amount: number, currency: string): string {
@@ -23,13 +28,20 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function InvoiceListItem({ invoice, onClick }: InvoiceListItemProps) {
+export function InvoiceListItem({
+  invoice,
+  onClick,
+  onMarkPaid,
+  onSendReminder,
+  onDownloadPdf,
+  onDelete,
+}: InvoiceListItemProps) {
   const isOverdue = invoice.status === "Overdue";
 
   return (
-    <button
+    <div
       onClick={onClick}
-      className="w-full invoice-card p-4 flex items-center gap-4 text-left transition-all hover:border-primary/20 group"
+      className="w-full invoice-card p-4 flex items-center gap-4 text-left transition-all hover:border-primary/20 group cursor-pointer"
     >
       {/* Invoice Number */}
       <div className="flex-1 min-w-0">
@@ -37,10 +49,7 @@ export function InvoiceListItem({ invoice, onClick }: InvoiceListItemProps) {
           <p className="font-mono text-sm font-medium text-foreground">
             #{invoice.number}
           </p>
-          <InvoiceStatusBadge
-            status={invoice.status}
-            isOverdue={isOverdue}
-          />
+          <InvoiceStatusBadge status={invoice.status} isOverdue={isOverdue} />
         </div>
         <p className="text-sm text-foreground truncate">{invoice.clientName}</p>
         {invoice.projectName && (
@@ -58,7 +67,12 @@ export function InvoiceListItem({ invoice, onClick }: InvoiceListItemProps) {
 
       {/* Amount */}
       <div className="text-right">
-        <p className={cn("font-semibold", isOverdue ? "text-destructive" : "text-foreground")}>
+        <p
+          className={cn(
+            "font-semibold",
+            isOverdue ? "text-destructive" : "text-foreground"
+          )}
+        >
           {formatCurrency(invoice.total, invoice.currency)}
         </p>
         {isOverdue && (
@@ -66,8 +80,14 @@ export function InvoiceListItem({ invoice, onClick }: InvoiceListItemProps) {
         )}
       </div>
 
-      {/* Arrow */}
-      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-    </button>
+      {/* Actions */}
+      <InvoiceActions
+        invoice={invoice}
+        onMarkPaid={onMarkPaid}
+        onSendReminder={onSendReminder}
+        onDownloadPdf={onDownloadPdf}
+        onDelete={onDelete}
+      />
+    </div>
   );
 }
