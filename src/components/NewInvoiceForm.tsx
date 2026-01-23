@@ -6,6 +6,7 @@ import { CalendarIcon, ArrowLeft, Send, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invoiceFormSchema, InvoiceFormData, LineItem } from "@/lib/invoice-schema";
 import { Invoice } from "@/data/invoices";
+import { Client, clients as initialClients } from "@/data/clients";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,12 +26,16 @@ import {
 } from "@/components/ui/form";
 import { LineItemsEditor } from "./LineItemsEditor";
 import { InvoiceTotals } from "./InvoiceTotals";
+import { ClientSelector } from "./ClientSelector";
+import { NewClientForm } from "./NewClientForm";
 import { useToast } from "@/hooks/use-toast";
 
 interface NewInvoiceFormProps {
   onBack: () => void;
   onSubmit: (data: InvoiceFormData) => void;
   editingInvoice?: Invoice;
+  clients: Client[];
+  onAddClient: (client: Client) => void;
 }
 
 function generateId(): string {
@@ -44,14 +49,21 @@ const defaultLineItem: () => LineItem = () => ({
   unitPrice: 0,
 });
 
-export function NewInvoiceForm({ onBack, onSubmit, editingInvoice }: NewInvoiceFormProps) {
+export function NewInvoiceForm({ 
+  onBack, 
+  onSubmit, 
+  editingInvoice,
+  clients,
+  onAddClient,
+}: NewInvoiceFormProps) {
   const { toast } = useToast();
   const isEditing = !!editingInvoice;
+  const [showNewClientForm, setShowNewClientForm] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   // Initialize line items based on editing mode
   const getInitialLineItems = (): LineItem[] => {
     if (editingInvoice) {
-      // For editing, create a single line item with the total (since we don't store line items)
       return [{
         id: generateId(),
         description: editingInvoice.projectName || "Services",
@@ -80,6 +92,41 @@ export function NewInvoiceForm({ onBack, onSubmit, editingInvoice }: NewInvoiceF
       notes: "",
     },
   });
+
+  // Find matching client when editing
+  useEffect(() => {
+    if (editingInvoice) {
+      const matchingClient = clients.find(
+        (c) => c.company === editingInvoice.clientName || c.name === editingInvoice.clientName
+      );
+      if (matchingClient) {
+        setSelectedClient(matchingClient);
+        form.setValue("clientEmail", matchingClient.email);
+      }
+    }
+  }, [editingInvoice, clients]);
+
+  // Update form when client is selected
+  const handleClientSelect = (client: Client | null) => {
+    setSelectedClient(client);
+    if (client) {
+      form.setValue("clientName", client.company || client.name);
+      form.setValue("clientEmail", client.email);
+    } else {
+      form.setValue("clientName", "");
+      form.setValue("clientEmail", "");
+    }
+  };
+
+  const handleAddNewClient = (client: Client) => {
+    onAddClient(client);
+    handleClientSelect(client);
+    setShowNewClientForm(false);
+    toast({
+      title: "Client added",
+      description: `${client.company || client.name} has been added to your clients.`,
+    });
+  };
 
   // Reset form when editingInvoice changes
   useEffect(() => {
@@ -167,38 +214,47 @@ export function NewInvoiceForm({ onBack, onSubmit, editingInvoice }: NewInvoiceF
             onSubmit={form.handleSubmit(handleFormSubmit)}
             className="space-y-6"
           >
-            {/* Client Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Client Selection */}
+            <div className="space-y-4">
+              <FormItem>
+                <FormLabel>Client *</FormLabel>
+                <ClientSelector
+                  clients={clients}
+                  selectedClient={selectedClient}
+                  onSelect={handleClientSelect}
+                  onAddNew={() => setShowNewClientForm(true)}
+                />
+              </FormItem>
+
+              {showNewClientForm && (
+                <NewClientForm
+                  onSubmit={handleAddNewClient}
+                  onCancel={() => setShowNewClientForm(false)}
+                />
+              )}
+
+              {/* Hidden fields that get populated from client selection */}
               <FormField
                 control={form.control}
                 name="clientName"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ACME Corporation" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  <input type="hidden" {...field} />
                 )}
               />
               <FormField
                 control={form.control}
                 name="clientEmail"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client Email *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="billing@acme.com"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  <input type="hidden" {...field} />
                 )}
               />
+
+              {selectedClient && (
+                <div className="text-sm text-muted-foreground bg-secondary/50 rounded-lg p-3">
+                  <p><strong>Email:</strong> {selectedClient.email}</p>
+                  {selectedClient.phone && <p><strong>Phone:</strong> {selectedClient.phone}</p>}
+                </div>
+              )}
             </div>
 
             <FormField
@@ -341,7 +397,7 @@ export function NewInvoiceForm({ onBack, onSubmit, editingInvoice }: NewInvoiceF
               <Button type="button" variant="outline" onClick={onBack}>
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={!selectedClient}>
                 {isEditing ? (
                   <>
                     <Save className="h-4 w-4 mr-2" />

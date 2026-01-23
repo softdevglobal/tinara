@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { invoices as initialInvoices, Invoice } from "@/data/invoices";
+import { clients as initialClients, Client } from "@/data/clients";
 import { InvoiceFilters } from "./InvoiceFilters";
 import { InvoiceListItem } from "./InvoiceListItem";
 import { InvoiceCard } from "./InvoiceCard";
@@ -19,6 +20,7 @@ interface InvoiceDashboardProps {
 
 export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboardProps) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const [clients, setClients] = useState<Client[]>(initialClients);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -97,6 +99,10 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
   const handleEdit = (invoice: Invoice) => {
     setEditingInvoice(invoice);
     setView("edit");
+  };
+
+  const handleAddClient = (client: Client) => {
+    setClients((prev) => [client, ...prev]);
   };
 
   const handleCreateInvoice = (data: InvoiceFormData) => {
@@ -194,7 +200,12 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
 
   if (view === "new") {
     return (
-      <NewInvoiceForm onBack={handleBackToList} onSubmit={handleCreateInvoice} />
+      <NewInvoiceForm 
+        onBack={handleBackToList} 
+        onSubmit={handleCreateInvoice}
+        clients={clients}
+        onAddClient={handleAddClient}
+      />
     );
   }
 
@@ -204,6 +215,8 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
         onBack={handleBackToList}
         onSubmit={handleUpdateInvoice}
         editingInvoice={editingInvoice}
+        clients={clients}
+        onAddClient={handleAddClient}
       />
     );
   }
