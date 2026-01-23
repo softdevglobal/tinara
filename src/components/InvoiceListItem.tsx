@@ -7,6 +7,7 @@ import { Calendar } from "lucide-react";
 interface InvoiceListItemProps {
   invoice: Invoice;
   onClick?: () => void;
+  onEdit: (invoice: Invoice) => void;
   onMarkPaid: (id: string) => void;
   onSendReminder: (invoice: Invoice) => void;
   onDownloadPdf: (invoice: Invoice) => void;
@@ -31,6 +32,7 @@ function formatDate(dateString: string): string {
 export function InvoiceListItem({
   invoice,
   onClick,
+  onEdit,
   onMarkPaid,
   onSendReminder,
   onDownloadPdf,
@@ -83,6 +85,7 @@ export function InvoiceListItem({
       {/* Actions */}
       <InvoiceActions
         invoice={invoice}
+        onEdit={onEdit}
         onMarkPaid={onMarkPaid}
         onSendReminder={onSendReminder}
         onDownloadPdf={onDownloadPdf}

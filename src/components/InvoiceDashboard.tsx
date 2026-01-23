@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { InvoiceFormData } from "@/lib/invoice-schema";
 
 type StatusFilter = "all" | "Opened" | "Paid" | "Overdue";
-type View = "list" | "detail" | "new";
+type View = "list" | "detail" | "new" | "edit";
 
 interface InvoiceDashboardProps {
   showNewForm?: boolean;
@@ -22,6 +22,7 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
   const { toast } = useToast();
 
@@ -93,6 +94,11 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
     });
   };
 
+  const handleEdit = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setView("edit");
+  };
+
   const handleCreateInvoice = (data: InvoiceFormData) => {
     const subtotal = data.lineItems.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
@@ -124,15 +130,81 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
     });
   };
 
+  const handleUpdateInvoice = (data: InvoiceFormData) => {
+    if (!editingInvoice) return;
+
+    const subtotal = data.lineItems.reduce(
+      (sum, item) => sum + item.quantity * item.unitPrice,
+      0
+    );
+    const taxAmount = subtotal * (data.taxRate / 100);
+    const total = subtotal + taxAmount;
+
+    const dueDate = data.dueDate;
+    const now = new Date();
+    const daysDiff = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    let status: "Opened" | "Paid" | "Overdue" = editingInvoice.status;
+    let dueDaysOverdue = 0;
+    let dueLabel = "";
+
+    if (status !== "Paid") {
+      if (daysDiff < 0) {
+        status = "Overdue";
+        dueDaysOverdue = Math.abs(daysDiff);
+        dueLabel = `${dueDaysOverdue} day${dueDaysOverdue > 1 ? "s" : ""} ago`;
+      } else {
+        status = "Opened";
+        dueLabel = `Due in ${daysDiff} days`;
+      }
+    }
+
+    setInvoices((prev) =>
+      prev.map((inv) =>
+        inv.id === editingInvoice.id
+          ? {
+              ...inv,
+              clientName: data.clientName,
+              projectName: data.projectName || "",
+              date: data.issueDate.toISOString().split("T")[0],
+              dueDate: data.dueDate.toISOString().split("T")[0],
+              dueDaysOverdue,
+              dueLabel,
+              status,
+              total,
+            }
+          : inv
+      )
+    );
+    
+    setEditingInvoice(null);
+    setView("list");
+    toast({
+      title: "Invoice updated",
+      description: `Invoice #${editingInvoice.number} has been updated.`,
+    });
+  };
+
   const handleBackToList = () => {
     setView("list");
     setSelectedInvoice(null);
+    setEditingInvoice(null);
     onCloseNewForm?.();
   };
 
   if (view === "new") {
     return (
       <NewInvoiceForm onBack={handleBackToList} onSubmit={handleCreateInvoice} />
+    );
+  }
+
+  if (view === "edit" && editingInvoice) {
+    return (
+      <NewInvoiceForm
+        onBack={handleBackToList}
+        onSubmit={handleUpdateInvoice}
+        editingInvoice={editingInvoice}
+      />
     );
   }
 
@@ -190,6 +262,7 @@ export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboa
                 setSelectedInvoice(invoice);
                 setView("detail");
               }}
+              onEdit={handleEdit}
               onMarkPaid={handleMarkPaid}
               onSendReminder={handleSendReminder}
               onDownloadPdf={handleDownloadPdf}
