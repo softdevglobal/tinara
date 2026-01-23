@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileText, Plus } from "lucide-react";
 import { InvoiceDashboard } from "@/components/InvoiceDashboard";
 import { InvoiceStats } from "@/components/InvoiceStats";
+import { RevenueChart } from "@/components/RevenueChart";
 import { AppLayout } from "@/components/AppLayout";
 import { useApp } from "@/context/AppContext";
 
@@ -31,8 +32,13 @@ const Index = () => {
         </button>
       </div>
 
-      {/* Stats */}
-      {!showNewForm && <InvoiceStats invoices={invoices} />}
+      {/* Stats & Chart */}
+      {!showNewForm && (
+        <>
+          <InvoiceStats invoices={invoices} />
+          <RevenueChart invoices={invoices} />
+        </>
+      )}
 
       <InvoiceDashboard
         invoices={invoices}
