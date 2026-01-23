@@ -1,14 +1,25 @@
 import { useState } from "react";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Download } from "lucide-react";
 import { InvoiceDashboard } from "@/components/InvoiceDashboard";
 import { InvoiceStats } from "@/components/InvoiceStats";
 import { RevenueChart } from "@/components/RevenueChart";
 import { AppLayout } from "@/components/AppLayout";
 import { useApp } from "@/context/AppContext";
+import { exportInvoicesToCSV } from "@/lib/csv-export";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [showNewForm, setShowNewForm] = useState(false);
   const { invoices, clients, setInvoices, addClient } = useApp();
+  const { toast } = useToast();
+
+  const handleExportInvoices = () => {
+    exportInvoicesToCSV(invoices);
+    toast({
+      title: "Export complete",
+      description: `${invoices.length} invoices exported to CSV.`,
+    });
+  };
 
   return (
     <AppLayout>
@@ -23,13 +34,22 @@ const Index = () => {
             <p className="text-sm text-muted-foreground">Manage your billing</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowNewForm(true)}
-          className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">New Invoice</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportInvoices}
+            className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border text-sm font-medium hover:bg-secondary transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+          <button
+            onClick={() => setShowNewForm(true)}
+            className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">New Invoice</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats & Chart */}
