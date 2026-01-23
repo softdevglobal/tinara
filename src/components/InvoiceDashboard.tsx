@@ -3,18 +3,32 @@ import { invoices as initialInvoices, Invoice } from "@/data/invoices";
 import { InvoiceFilters } from "./InvoiceFilters";
 import { InvoiceListItem } from "./InvoiceListItem";
 import { InvoiceCard } from "./InvoiceCard";
+import { NewInvoiceForm } from "./NewInvoiceForm";
 import { ArrowLeft, FileText } from "lucide-react";
 import { generateInvoicePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
+import { InvoiceFormData } from "@/lib/invoice-schema";
 
 type StatusFilter = "all" | "Opened" | "Paid" | "Overdue";
+type View = "list" | "detail" | "new";
 
-export function InvoiceDashboard() {
+interface InvoiceDashboardProps {
+  showNewForm?: boolean;
+  onCloseNewForm?: () => void;
+}
+
+export function InvoiceDashboard({ showNewForm, onCloseNewForm }: InvoiceDashboardProps) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [view, setView] = useState<View>(showNewForm ? "new" : "list");
   const { toast } = useToast();
+
+  // Sync with prop
+  if (showNewForm && view !== "new") {
+    setView("new");
+  }
 
   const counts = useMemo(
     () => ({
@@ -56,7 +70,6 @@ export function InvoiceDashboard() {
   };
 
   const handleSendReminder = (invoice: Invoice) => {
-    // This will be implemented with Cloud/Edge function
     toast({
       title: "Reminder feature",
       description: "Enable Lovable Cloud to send email reminders.",
@@ -80,10 +93,53 @@ export function InvoiceDashboard() {
     });
   };
 
-  if (selectedInvoice) {
-    // Update selected invoice if it was modified
+  const handleCreateInvoice = (data: InvoiceFormData) => {
+    const subtotal = data.lineItems.reduce(
+      (sum, item) => sum + item.quantity * item.unitPrice,
+      0
+    );
+    const taxAmount = subtotal * (data.taxRate / 100);
+    const total = subtotal + taxAmount;
+
+    const newInvoice: Invoice = {
+      id: `inv_${Date.now()}`,
+      number: `A${Date.now().toString().slice(-8)}`,
+      clientName: data.clientName,
+      projectName: data.projectName || "",
+      date: data.issueDate.toISOString().split("T")[0],
+      dueDate: data.dueDate.toISOString().split("T")[0],
+      dueDaysOverdue: 0,
+      dueLabel: `Due in ${Math.ceil((data.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days`,
+      status: "Opened",
+      total: total,
+      currency: "AUD",
+    };
+
+    setInvoices((prev) => [newInvoice, ...prev]);
+    setView("list");
+    onCloseNewForm?.();
+    toast({
+      title: "Invoice created",
+      description: `Invoice #${newInvoice.number} has been created.`,
+    });
+  };
+
+  const handleBackToList = () => {
+    setView("list");
+    setSelectedInvoice(null);
+    onCloseNewForm?.();
+  };
+
+  if (view === "new") {
+    return (
+      <NewInvoiceForm onBack={handleBackToList} onSubmit={handleCreateInvoice} />
+    );
+  }
+
+  if (view === "detail" && selectedInvoice) {
     const currentInvoice = invoices.find((inv) => inv.id === selectedInvoice.id);
     if (!currentInvoice) {
+      setView("list");
       setSelectedInvoice(null);
       return null;
     }
@@ -91,7 +147,7 @@ export function InvoiceDashboard() {
     return (
       <div className="animate-fade-in">
         <button
-          onClick={() => setSelectedInvoice(null)}
+          onClick={handleBackToList}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -130,7 +186,10 @@ export function InvoiceDashboard() {
             <InvoiceListItem
               key={invoice.id}
               invoice={invoice}
-              onClick={() => setSelectedInvoice(invoice)}
+              onClick={() => {
+                setSelectedInvoice(invoice);
+                setView("detail");
+              }}
               onMarkPaid={handleMarkPaid}
               onSendReminder={handleSendReminder}
               onDownloadPdf={handleDownloadPdf}
