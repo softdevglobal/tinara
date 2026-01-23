@@ -1,4 +1,4 @@
-import { useState, useMemo, createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 import { invoices as initialInvoices, Invoice } from "@/data/invoices";
 import { clients as initialClients, Client } from "@/data/clients";
 
@@ -12,7 +12,7 @@ interface AppState {
   deleteClient: (id: string) => void;
 }
 
-const AppContext = createContext<AppState | null>(null);
+const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
@@ -30,26 +30,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setClients((prev) => prev.filter((c) => c.id !== id));
   };
 
-  return (
-    <AppContext.Provider
-      value={{
-        invoices,
-        clients,
-        setInvoices,
-        setClients,
-        addClient,
-        updateClient,
-        deleteClient,
-      }}
-    >
-      {children}
-    </AppContext.Provider>
-  );
+  const value: AppState = {
+    invoices,
+    clients,
+    setInvoices,
+    setClients,
+    addClient,
+    updateClient,
+    deleteClient,
+  };
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-export function useApp() {
+export function useApp(): AppState {
   const context = useContext(AppContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useApp must be used within AppProvider");
   }
   return context;
