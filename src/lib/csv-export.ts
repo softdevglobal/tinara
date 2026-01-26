@@ -1,5 +1,6 @@
 import { Invoice } from "@/data/invoices";
 import { Client } from "@/data/clients";
+import { Quote } from "@/data/quotes";
 
 function escapeCSV(value: string | number | undefined): string {
   if (value === undefined || value === null) return "";
@@ -67,4 +68,32 @@ export function exportClientsToCSV(clients: Client[]) {
   const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
   const date = new Date().toISOString().split("T")[0];
   downloadCSV(csv, `clients-export-${date}.csv`);
+}
+
+export function exportQuotesToCSV(quotes: Quote[]) {
+  const headers = [
+    "Quote Number",
+    "Client Name",
+    "Project Name",
+    "Issue Date",
+    "Valid Until",
+    "Status",
+    "Total",
+    "Currency",
+  ];
+
+  const rows = quotes.map((quote) => [
+    escapeCSV(quote.number),
+    escapeCSV(quote.clientName),
+    escapeCSV(quote.projectName),
+    escapeCSV(quote.date),
+    escapeCSV(quote.validUntil),
+    escapeCSV(quote.status),
+    escapeCSV(quote.total.toFixed(2)),
+    escapeCSV(quote.currency),
+  ]);
+
+  const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+  const date = new Date().toISOString().split("T")[0];
+  downloadCSV(csv, `quotes-export-${date}.csv`);
 }
