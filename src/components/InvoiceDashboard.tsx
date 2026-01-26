@@ -5,6 +5,7 @@ import { InvoiceFilters } from "./InvoiceFilters";
 import { InvoiceListItem } from "./InvoiceListItem";
 import { InvoiceCard } from "./InvoiceCard";
 import { NewInvoiceForm } from "./NewInvoiceForm";
+import { BulkActionsBar } from "./BulkActionsBar";
 import { ArrowLeft, FileText } from "lucide-react";
 import { generateInvoicePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
@@ -64,6 +65,8 @@ export function InvoiceDashboard({
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectMode, setIsSelectMode] = useState(false);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
 
@@ -131,10 +134,69 @@ export function InvoiceDashboard({
 
   const handleDelete = (id: string) => {
     onUpdateInvoices((prev) => prev.filter((inv) => inv.id !== id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     toast({
       title: "Invoice deleted",
       description: "The invoice has been removed.",
     });
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredInvoices.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredInvoices.map((inv) => inv.id)));
+    }
+  };
+
+  const handleBulkMarkPaid = () => {
+    const paidDate = new Date().toISOString().split("T")[0];
+    const count = selectedIds.size;
+    onUpdateInvoices((prev) =>
+      prev.map((inv) =>
+        selectedIds.has(inv.id)
+          ? { ...inv, status: "Paid" as const, dueDaysOverdue: 0, dueLabel: "", paidDate }
+          : inv
+      )
+    );
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+    toast({
+      title: "Invoices marked as paid",
+      description: `${count} invoice${count > 1 ? "s" : ""} marked as paid.`,
+    });
+  };
+
+  const handleBulkDelete = () => {
+    const count = selectedIds.size;
+    onUpdateInvoices((prev) => prev.filter((inv) => !selectedIds.has(inv.id)));
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+    toast({
+      title: "Invoices deleted",
+      description: `${count} invoice${count > 1 ? "s" : ""} deleted.`,
+    });
+  };
+
+  const handleCancelSelect = () => {
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
   };
 
   const handleEdit = (invoice: Invoice) => {
@@ -292,7 +354,20 @@ export function InvoiceDashboard({
         sortOption={sortOption}
         onSortChange={setSortOption}
         counts={counts}
+        isSelectMode={isSelectMode}
+        onToggleSelectMode={() => setIsSelectMode(!isSelectMode)}
       />
+
+      {isSelectMode && filteredInvoices.length > 0 && (
+        <BulkActionsBar
+          selectedCount={selectedIds.size}
+          totalCount={filteredInvoices.length}
+          onSelectAll={handleSelectAll}
+          onMarkPaid={handleBulkMarkPaid}
+          onDelete={handleBulkDelete}
+          onCancel={handleCancelSelect}
+        />
+      )}
 
       {filteredInvoices.length === 0 ? (
         <div className="text-center py-12">
@@ -310,9 +385,14 @@ export function InvoiceDashboard({
             <InvoiceListItem
               key={invoice.id}
               invoice={invoice}
+              isSelectMode={isSelectMode}
+              isSelected={selectedIds.has(invoice.id)}
+              onToggleSelect={() => handleToggleSelect(invoice.id)}
               onClick={() => {
-                setSelectedInvoice(invoice);
-                setView("detail");
+                if (!isSelectMode) {
+                  setSelectedInvoice(invoice);
+                  setView("detail");
+                }
               }}
               onEdit={handleEdit}
               onMarkPaid={handleMarkPaid}
