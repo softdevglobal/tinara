@@ -7,6 +7,7 @@ import { QuoteListItem } from "./QuoteListItem";
 import { QuoteCard } from "./QuoteCard";
 import { NewQuoteForm } from "./NewQuoteForm";
 import { ArrowLeft, FileText } from "lucide-react";
+import { generateQuotePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
 import { QuoteFormData } from "@/lib/quote-schema";
 import { useApp } from "@/context/AppContext";
@@ -101,7 +102,7 @@ export function QuoteDashboard({
   };
 
   const handleDownloadPdf = (quote: Quote) => {
-    // TODO: Implement quote PDF generation
+    generateQuotePdf(quote, brandingSettings);
     toast({
       title: "PDF Downloaded",
       description: `Quote #${quote.number} has been downloaded.`,

@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { Invoice } from "@/data/invoices";
+import { Quote } from "@/data/quotes";
 import { BrandingSettings, defaultBrandingSettings } from "@/types/branding";
 
 function formatCurrency(amount: number, currency: string): string {
@@ -25,9 +26,73 @@ function hexToRgb(hex: string): [number, number, number] {
     : [0, 0, 0];
 }
 
+// Shared document data structure
+interface DocumentData {
+  number: string;
+  clientName: string;
+  projectName: string;
+  date: string;
+  secondaryDate: string;
+  secondaryDateLabel: string;
+  status: string;
+  total: number;
+  currency: string;
+  documentType: "INVOICE" | "QUOTE";
+  amountLabel: string;
+}
+
+function invoiceToDocData(invoice: Invoice): DocumentData {
+  return {
+    number: invoice.number,
+    clientName: invoice.clientName,
+    projectName: invoice.projectName,
+    date: invoice.date,
+    secondaryDate: invoice.dueDate,
+    secondaryDateLabel: "Due Date",
+    status: invoice.status,
+    total: invoice.total,
+    currency: invoice.currency,
+    documentType: "INVOICE",
+    amountLabel: "AMOUNT DUE",
+  };
+}
+
+function quoteToDocData(quote: Quote): DocumentData {
+  return {
+    number: quote.number,
+    clientName: quote.clientName,
+    projectName: quote.projectName,
+    date: quote.date,
+    secondaryDate: quote.validUntil,
+    secondaryDateLabel: "Valid Until",
+    status: quote.status,
+    total: quote.total,
+    currency: quote.currency,
+    documentType: "QUOTE",
+    amountLabel: "QUOTED AMOUNT",
+  };
+}
+
+function getStatusColor(status: string): [number, number, number] {
+  switch (status) {
+    case "Paid":
+    case "Accepted":
+      return [34, 197, 94];
+    case "Overdue":
+    case "Expired":
+      return [239, 68, 68];
+    case "Converted":
+      return [139, 92, 246];
+    case "Sent":
+      return [59, 130, 246];
+    default:
+      return [150, 150, 150];
+  }
+}
+
 function generateModernTemplate(
   doc: jsPDF,
-  invoice: Invoice,
+  data: DocumentData,
   branding: BrandingSettings
 ): void {
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -42,22 +107,17 @@ function generateModernTemplate(
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.text(branding.companyName || "INVOICE", 20, 30);
+  doc.text(branding.companyName || data.documentType, 20, 30);
 
-  // Invoice label
+  // Document label
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(`Invoice #${invoice.number}`, pageWidth - 20, 25, { align: "right" });
+  doc.text(`${data.documentType} #${data.number}`, pageWidth - 20, 25, { align: "right" });
 
   // Status badge
-  const statusColor =
-    invoice.status === "Paid"
-      ? [34, 197, 94]
-      : invoice.status === "Overdue"
-      ? [239, 68, 68]
-      : [255, 255, 255];
+  const statusColor = getStatusColor(data.status);
   doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-  doc.text(invoice.status.toUpperCase(), pageWidth - 20, 35, { align: "right" });
+  doc.text(data.status.toUpperCase(), pageWidth - 20, 35, { align: "right" });
 
   // Reset for body
   doc.setTextColor(0);
@@ -84,12 +144,12 @@ function generateModernTemplate(
   doc.setTextColor(100);
   doc.text("Issue Date", pageWidth - 70, yPos);
   doc.setTextColor(0);
-  doc.text(formatDate(invoice.date), pageWidth - 70, yPos + 5);
+  doc.text(formatDate(data.date), pageWidth - 70, yPos + 5);
 
   doc.setTextColor(100);
-  doc.text("Due Date", pageWidth - 70, yPos + 15);
+  doc.text(data.secondaryDateLabel, pageWidth - 70, yPos + 15);
   doc.setTextColor(0);
-  doc.text(formatDate(invoice.dueDate), pageWidth - 70, yPos + 20);
+  doc.text(formatDate(data.secondaryDate), pageWidth - 70, yPos + 20);
 
   yPos = 110;
 
@@ -99,28 +159,28 @@ function generateModernTemplate(
 
   doc.setFontSize(9);
   doc.setTextColor(100);
-  doc.text("BILL TO", 28, yPos + 5);
+  doc.text(data.documentType === "QUOTE" ? "PREPARED FOR" : "BILL TO", 28, yPos + 5);
   doc.setTextColor(0);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text(invoice.clientName, 28, yPos + 15);
-  if (invoice.projectName) {
+  doc.text(data.clientName, 28, yPos + 15);
+  if (data.projectName) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text(invoice.projectName, 28, yPos + 22);
+    doc.text(data.projectName, 28, yPos + 22);
   }
 
   // Amount section
   yPos = 160;
   doc.setFontSize(10);
   doc.setTextColor(100);
-  doc.text("AMOUNT DUE", 20, yPos);
+  doc.text(data.amountLabel, 20, yPos);
 
   doc.setFontSize(32);
   doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
   doc.setFont("helvetica", "bold");
-  doc.text(formatCurrency(invoice.total, invoice.currency), 20, yPos + 18);
+  doc.text(formatCurrency(data.total, data.currency), 20, yPos + 18);
 
   // Footer
   doc.setFontSize(9);
@@ -133,7 +193,7 @@ function generateModernTemplate(
 
 function generateClassicTemplate(
   doc: jsPDF,
-  invoice: Invoice,
+  data: DocumentData,
   branding: BrandingSettings
 ): void {
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -162,16 +222,16 @@ function generateClassicTemplate(
     doc.text(branding.companyPhone, 20, yPos);
   }
 
-  // Invoice title on right
+  // Document title on right
   doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
-  doc.text("INVOICE", pageWidth - 20, 30, { align: "right" });
+  doc.text(data.documentType, pageWidth - 20, 30, { align: "right" });
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text(`#${invoice.number}`, pageWidth - 20, 38, { align: "right" });
+  doc.text(`#${data.number}`, pageWidth - 20, 38, { align: "right" });
 
   // Horizontal line
   doc.setDrawColor(200);
@@ -181,19 +241,19 @@ function generateClassicTemplate(
   // Two column layout
   yPos = 70;
 
-  // Bill To
+  // Bill To / Prepared For
   doc.setFontSize(9);
   doc.setTextColor(100);
-  doc.text("BILL TO", 20, yPos);
+  doc.text(data.documentType === "QUOTE" ? "PREPARED FOR" : "BILL TO", 20, yPos);
   doc.setTextColor(0);
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text(invoice.clientName, 20, yPos + 8);
-  if (invoice.projectName) {
+  doc.text(data.clientName, 20, yPos + 8);
+  if (data.projectName) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text(invoice.projectName, 20, yPos + 14);
+    doc.text(data.projectName, 20, yPos + 14);
   }
 
   // Dates
@@ -201,24 +261,19 @@ function generateClassicTemplate(
   doc.setTextColor(100);
   doc.text("ISSUE DATE", pageWidth - 70, yPos);
   doc.setTextColor(0);
-  doc.text(formatDate(invoice.date), pageWidth - 70, yPos + 6);
+  doc.text(formatDate(data.date), pageWidth - 70, yPos + 6);
 
   doc.setTextColor(100);
-  doc.text("DUE DATE", pageWidth - 70, yPos + 16);
+  doc.text(data.secondaryDateLabel.toUpperCase(), pageWidth - 70, yPos + 16);
   doc.setTextColor(0);
-  doc.text(formatDate(invoice.dueDate), pageWidth - 70, yPos + 22);
+  doc.text(formatDate(data.secondaryDate), pageWidth - 70, yPos + 22);
 
   doc.setTextColor(100);
   doc.text("STATUS", pageWidth - 70, yPos + 32);
-  const statusColor =
-    invoice.status === "Paid"
-      ? [34, 197, 94]
-      : invoice.status === "Overdue"
-      ? [239, 68, 68]
-      : [100, 100, 100];
+  const statusColor = getStatusColor(data.status);
   doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
   doc.setFont("helvetica", "bold");
-  doc.text(invoice.status.toUpperCase(), pageWidth - 70, yPos + 38);
+  doc.text(data.status.toUpperCase(), pageWidth - 70, yPos + 38);
 
   // Amount box
   yPos = 140;
@@ -228,12 +283,12 @@ function generateClassicTemplate(
   doc.setFontSize(10);
   doc.setTextColor(100);
   doc.setFont("helvetica", "normal");
-  doc.text("Amount Due", 30, yPos + 15);
+  doc.text(data.amountLabel.replace("_", " "), 30, yPos + 15);
 
   doc.setFontSize(24);
   doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
   doc.setFont("helvetica", "bold");
-  doc.text(formatCurrency(invoice.total, invoice.currency), 30, yPos + 30);
+  doc.text(formatCurrency(data.total, data.currency), 30, yPos + 30);
 
   // Footer
   doc.setFontSize(9);
@@ -246,7 +301,7 @@ function generateClassicTemplate(
 
 function generateMinimalTemplate(
   doc: jsPDF,
-  invoice: Invoice,
+  data: DocumentData,
   branding: BrandingSettings
 ): void {
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -255,12 +310,12 @@ function generateMinimalTemplate(
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(150);
-  doc.text("INVOICE", 20, 25);
+  doc.text(data.documentType, 20, 25);
 
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
-  doc.text(`#${invoice.number}`, 20, 38);
+  doc.text(`#${data.number}`, 20, 38);
 
   // Company name subtle
   if (branding.companyName) {
@@ -271,15 +326,10 @@ function generateMinimalTemplate(
   }
 
   // Status
-  const statusColor =
-    invoice.status === "Paid"
-      ? [34, 197, 94]
-      : invoice.status === "Overdue"
-      ? [239, 68, 68]
-      : [150, 150, 150];
+  const statusColor = getStatusColor(data.status);
   doc.setFontSize(9);
   doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-  doc.text(invoice.status.toUpperCase(), pageWidth - 20, 32, { align: "right" });
+  doc.text(data.status.toUpperCase(), pageWidth - 20, 32, { align: "right" });
 
   // Thin line
   doc.setDrawColor(230);
@@ -291,14 +341,14 @@ function generateMinimalTemplate(
 
   doc.setFontSize(9);
   doc.setTextColor(150);
-  doc.text("Bill to", 20, yPos);
+  doc.text(data.documentType === "QUOTE" ? "Prepared for" : "Bill to", 20, yPos);
   doc.setTextColor(0);
   doc.setFontSize(11);
-  doc.text(invoice.clientName, 20, yPos + 8);
-  if (invoice.projectName) {
+  doc.text(data.clientName, 20, yPos + 8);
+  if (data.projectName) {
     doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.text(invoice.projectName, 20, yPos + 14);
+    doc.text(data.projectName, 20, yPos + 14);
   }
 
   // Dates right aligned
@@ -306,12 +356,12 @@ function generateMinimalTemplate(
   doc.setTextColor(150);
   doc.text("Issued", pageWidth - 60, yPos);
   doc.setTextColor(0);
-  doc.text(formatDate(invoice.date), pageWidth - 60, yPos + 6);
+  doc.text(formatDate(data.date), pageWidth - 60, yPos + 6);
 
   doc.setTextColor(150);
-  doc.text("Due", pageWidth - 60, yPos + 16);
+  doc.text(data.documentType === "QUOTE" ? "Valid until" : "Due", pageWidth - 60, yPos + 16);
   doc.setTextColor(0);
-  doc.text(formatDate(invoice.dueDate), pageWidth - 60, yPos + 22);
+  doc.text(formatDate(data.secondaryDate), pageWidth - 60, yPos + 22);
 
   // Amount
   yPos = 130;
@@ -322,7 +372,7 @@ function generateMinimalTemplate(
   doc.setFontSize(28);
   doc.setTextColor(0);
   doc.setFont("helvetica", "bold");
-  doc.text(formatCurrency(invoice.total, invoice.currency), 20, yPos + 15);
+  doc.text(formatCurrency(data.total, data.currency), 20, yPos + 15);
 
   // Footer
   doc.setFontSize(8);
@@ -338,19 +388,43 @@ export function generateInvoicePdf(
   branding: BrandingSettings = defaultBrandingSettings
 ): void {
   const doc = new jsPDF();
+  const data = invoiceToDocData(invoice);
 
   switch (branding.template) {
     case "classic":
-      generateClassicTemplate(doc, invoice, branding);
+      generateClassicTemplate(doc, data, branding);
       break;
     case "minimal":
-      generateMinimalTemplate(doc, invoice, branding);
+      generateMinimalTemplate(doc, data, branding);
       break;
     case "modern":
     default:
-      generateModernTemplate(doc, invoice, branding);
+      generateModernTemplate(doc, data, branding);
       break;
   }
 
   doc.save(`invoice-${invoice.number}.pdf`);
+}
+
+export function generateQuotePdf(
+  quote: Quote,
+  branding: BrandingSettings = defaultBrandingSettings
+): void {
+  const doc = new jsPDF();
+  const data = quoteToDocData(quote);
+
+  switch (branding.template) {
+    case "classic":
+      generateClassicTemplate(doc, data, branding);
+      break;
+    case "minimal":
+      generateMinimalTemplate(doc, data, branding);
+      break;
+    case "modern":
+    default:
+      generateModernTemplate(doc, data, branding);
+      break;
+  }
+
+  doc.save(`quote-${quote.number}.pdf`);
 }
