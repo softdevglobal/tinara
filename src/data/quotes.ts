@@ -10,7 +10,10 @@ export interface Quote {
   status: "Draft" | "Sent" | "Accepted" | "Expired" | "Converted";
   total: number;
   currency: string;
+  acceptedDate?: string;
 }
+
+export type QuoteSortOption = "date-desc" | "date-asc" | "accepted-desc" | "accepted-asc" | "amount-desc" | "amount-asc";
 
 export const quotes: Quote[] = [
   {
@@ -49,6 +52,7 @@ export const quotes: Quote[] = [
     validDaysRemaining: 0,
     validLabel: "",
     status: "Accepted",
+    acceptedDate: "2026-01-18",
     total: 3200.0,
     currency: "AUD"
   },

@@ -10,7 +10,10 @@ export interface Invoice {
   status: "Opened" | "Paid" | "Overdue";
   total: number;
   currency: string;
+  paidDate?: string;
 }
+
+export type InvoiceSortOption = "date-desc" | "date-asc" | "paid-desc" | "paid-asc" | "amount-desc" | "amount-asc";
 
 export const invoices: Invoice[] = [
   {
@@ -46,6 +49,7 @@ export const invoices: Invoice[] = [
     projectName: "POS Integration",
     date: "2026-01-10",
     dueDate: "2026-01-17",
+    paidDate: "2026-01-15",
     dueDaysOverdue: 0,
     dueLabel: "",
     status: "Paid",
@@ -85,6 +89,7 @@ export const invoices: Invoice[] = [
     projectName: "Website Redesign",
     date: "2026-01-05",
     dueDate: "2026-01-12",
+    paidDate: "2026-01-11",
     dueDaysOverdue: 0,
     dueLabel: "",
     status: "Paid",
