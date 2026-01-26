@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/context/AppContext";
+import { AutoInvoiceGenerator } from "@/components/AutoInvoiceGenerator";
 import Index from "./pages/Index";
 import Clients from "./pages/Clients";
 import Quotes from "./pages/Quotes";
@@ -17,6 +18,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AppProvider>
+          <AutoInvoiceGenerator />
           <Toaster />
           <Sonner />
           <BrowserRouter>
