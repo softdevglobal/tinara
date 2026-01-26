@@ -9,6 +9,7 @@ import { ArrowLeft, FileText } from "lucide-react";
 import { generateInvoicePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceFormData } from "@/lib/invoice-schema";
+import { useApp } from "@/context/AppContext";
 
 type StatusFilter = "all" | "Opened" | "Paid" | "Overdue";
 type View = "list" | "detail" | "new" | "edit";
@@ -36,6 +37,7 @@ export function InvoiceDashboard({
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
   const { toast } = useToast();
+  const { brandingSettings } = useApp();
 
   // Sync with prop
   if (showNewForm && view !== "new") {
@@ -90,7 +92,7 @@ export function InvoiceDashboard({
   };
 
   const handleDownloadPdf = (invoice: Invoice) => {
-    generateInvoicePdf(invoice);
+    generateInvoicePdf(invoice, brandingSettings);
     toast({
       title: "PDF Downloaded",
       description: `Invoice #${invoice.number} has been downloaded.`,

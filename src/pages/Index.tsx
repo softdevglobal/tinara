@@ -1,16 +1,20 @@
 import { useState } from "react";
-import { FileText, Plus, Download } from "lucide-react";
+import { FileText, Plus, Download, Settings } from "lucide-react";
 import { InvoiceDashboard } from "@/components/InvoiceDashboard";
 import { InvoiceStats } from "@/components/InvoiceStats";
 import { RevenueChart } from "@/components/RevenueChart";
+import { BrandingSettings } from "@/components/BrandingSettings";
 import { AppLayout } from "@/components/AppLayout";
 import { useApp } from "@/context/AppContext";
 import { exportInvoicesToCSV } from "@/lib/csv-export";
 import { useToast } from "@/hooks/use-toast";
 
+type View = "dashboard" | "settings";
+
 const Index = () => {
   const [showNewForm, setShowNewForm] = useState(false);
-  const { invoices, clients, setInvoices, addClient } = useApp();
+  const [view, setView] = useState<View>("dashboard");
+  const { invoices, clients, setInvoices, addClient, brandingSettings, updateBrandingSettings } = useApp();
   const { toast } = useToast();
 
   const handleExportInvoices = () => {
@@ -20,6 +24,21 @@ const Index = () => {
       description: `${invoices.length} invoices exported to CSV.`,
     });
   };
+
+  if (view === "settings") {
+    return (
+      <AppLayout>
+        <BrandingSettings
+          settings={brandingSettings}
+          onSave={(settings) => {
+            updateBrandingSettings(settings);
+            setView("dashboard");
+          }}
+          onBack={() => setView("dashboard")}
+        />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -35,6 +54,14 @@ const Index = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setView("settings")}
+            className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border text-sm font-medium hover:bg-secondary transition-colors"
+            title="Invoice Branding"
+          >
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Branding</span>
+          </button>
           <button
             onClick={handleExportInvoices}
             className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border text-sm font-medium hover:bg-secondary transition-colors"
