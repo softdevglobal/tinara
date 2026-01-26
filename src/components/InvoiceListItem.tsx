@@ -3,9 +3,13 @@ import { Invoice } from "@/data/invoices";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import { InvoiceActions } from "./InvoiceActions";
 import { Calendar } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface InvoiceListItemProps {
   invoice: Invoice;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
   onClick?: () => void;
   onEdit: (invoice: Invoice) => void;
   onMarkPaid: (id: string) => void;
@@ -31,6 +35,9 @@ function formatDate(dateString: string): string {
 
 export function InvoiceListItem({
   invoice,
+  isSelectMode,
+  isSelected,
+  onToggleSelect,
   onClick,
   onEdit,
   onMarkPaid,
@@ -40,11 +47,33 @@ export function InvoiceListItem({
 }: InvoiceListItemProps) {
   const isOverdue = invoice.status === "Overdue";
 
+  const handleClick = () => {
+    if (isSelectMode && onToggleSelect) {
+      onToggleSelect();
+    } else if (onClick) {
+      onClick();
+    }
+  };
+
   return (
     <div
-      onClick={onClick}
-      className="w-full invoice-card p-4 flex items-center gap-4 text-left transition-all hover:border-primary/20 group cursor-pointer"
+      onClick={handleClick}
+      className={cn(
+        "w-full invoice-card p-4 flex items-center gap-4 text-left transition-all hover:border-primary/20 group cursor-pointer",
+        isSelected && "border-primary bg-primary/5"
+      )}
     >
+      {/* Checkbox for select mode */}
+      {isSelectMode && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggleSelect}
+            className="data-[state=checked]:bg-primary"
+          />
+        </div>
+      )}
+
       {/* Invoice Number */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -82,15 +111,17 @@ export function InvoiceListItem({
         )}
       </div>
 
-      {/* Actions */}
-      <InvoiceActions
-        invoice={invoice}
-        onEdit={onEdit}
-        onMarkPaid={onMarkPaid}
-        onSendReminder={onSendReminder}
-        onDownloadPdf={onDownloadPdf}
-        onDelete={onDelete}
-      />
+      {/* Actions - hide in select mode */}
+      {!isSelectMode && (
+        <InvoiceActions
+          invoice={invoice}
+          onEdit={onEdit}
+          onMarkPaid={onMarkPaid}
+          onSendReminder={onSendReminder}
+          onDownloadPdf={onDownloadPdf}
+          onDelete={onDelete}
+        />
+      )}
     </div>
   );
 }
