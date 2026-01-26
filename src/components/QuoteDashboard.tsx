@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Quote } from "@/data/quotes";
+import { Quote, QuoteSortOption } from "@/data/quotes";
 import { Invoice } from "@/data/invoices";
 import { Client } from "@/data/clients";
 import { QuoteFilters } from "./QuoteFilters";
@@ -25,6 +25,33 @@ interface QuoteDashboardProps {
   onCloseNewForm?: () => void;
 }
 
+function sortQuotes(quotes: Quote[], sortOption: QuoteSortOption): Quote[] {
+  return [...quotes].sort((a, b) => {
+    switch (sortOption) {
+      case "date-desc":
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      case "date-asc":
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      case "accepted-desc":
+        if (!a.acceptedDate && !b.acceptedDate) return 0;
+        if (!a.acceptedDate) return 1;
+        if (!b.acceptedDate) return -1;
+        return new Date(b.acceptedDate).getTime() - new Date(a.acceptedDate).getTime();
+      case "accepted-asc":
+        if (!a.acceptedDate && !b.acceptedDate) return 0;
+        if (!a.acceptedDate) return 1;
+        if (!b.acceptedDate) return -1;
+        return new Date(a.acceptedDate).getTime() - new Date(b.acceptedDate).getTime();
+      case "amount-desc":
+        return b.total - a.total;
+      case "amount-asc":
+        return a.total - b.total;
+      default:
+        return 0;
+    }
+  });
+}
+
 export function QuoteDashboard({
   quotes,
   clients,
@@ -36,6 +63,7 @@ export function QuoteDashboard({
 }: QuoteDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortOption, setSortOption] = useState<QuoteSortOption>("date-desc");
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
@@ -59,7 +87,7 @@ export function QuoteDashboard({
   );
 
   const filteredQuotes = useMemo(() => {
-    return quotes.filter((quote) => {
+    const filtered = quotes.filter((quote) => {
       const matchesSearch =
         searchQuery === "" ||
         quote.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -71,7 +99,8 @@ export function QuoteDashboard({
 
       return matchesSearch && matchesStatus;
     });
-  }, [quotes, searchQuery, statusFilter]);
+    return sortQuotes(filtered, sortOption);
+  }, [quotes, searchQuery, statusFilter, sortOption]);
 
   const handleSend = (quote: Quote) => {
     onUpdateQuotes((prev) =>
@@ -88,10 +117,11 @@ export function QuoteDashboard({
   };
 
   const handleAccept = (id: string) => {
+    const acceptedDate = new Date().toISOString().split("T")[0];
     onUpdateQuotes((prev) =>
       prev.map((q) =>
         q.id === id
-          ? { ...q, status: "Accepted" as const }
+          ? { ...q, status: "Accepted" as const, acceptedDate }
           : q
       )
     );
@@ -253,6 +283,8 @@ export function QuoteDashboard({
         onSearchChange={setSearchQuery}
         statusFilter={statusFilter}
         onStatusChange={setStatusFilter}
+        sortOption={sortOption}
+        onSortChange={setSortOption}
         counts={counts}
       />
 

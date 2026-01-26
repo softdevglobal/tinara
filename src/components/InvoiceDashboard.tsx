@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Invoice } from "@/data/invoices";
+import { Invoice, InvoiceSortOption } from "@/data/invoices";
 import { Client } from "@/data/clients";
 import { InvoiceFilters } from "./InvoiceFilters";
 import { InvoiceListItem } from "./InvoiceListItem";
@@ -23,6 +23,33 @@ interface InvoiceDashboardProps {
   onCloseNewForm?: () => void;
 }
 
+function sortInvoices(invoices: Invoice[], sortOption: InvoiceSortOption): Invoice[] {
+  return [...invoices].sort((a, b) => {
+    switch (sortOption) {
+      case "date-desc":
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      case "date-asc":
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      case "paid-desc":
+        if (!a.paidDate && !b.paidDate) return 0;
+        if (!a.paidDate) return 1;
+        if (!b.paidDate) return -1;
+        return new Date(b.paidDate).getTime() - new Date(a.paidDate).getTime();
+      case "paid-asc":
+        if (!a.paidDate && !b.paidDate) return 0;
+        if (!a.paidDate) return 1;
+        if (!b.paidDate) return -1;
+        return new Date(a.paidDate).getTime() - new Date(b.paidDate).getTime();
+      case "amount-desc":
+        return b.total - a.total;
+      case "amount-asc":
+        return a.total - b.total;
+      default:
+        return 0;
+    }
+  });
+}
+
 export function InvoiceDashboard({
   invoices,
   clients,
@@ -33,6 +60,7 @@ export function InvoiceDashboard({
 }: InvoiceDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortOption, setSortOption] = useState<InvoiceSortOption>("date-desc");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
@@ -55,7 +83,7 @@ export function InvoiceDashboard({
   );
 
   const filteredInvoices = useMemo(() => {
-    return invoices.filter((invoice) => {
+    const filtered = invoices.filter((invoice) => {
       const matchesSearch =
         searchQuery === "" ||
         invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -67,13 +95,15 @@ export function InvoiceDashboard({
 
       return matchesSearch && matchesStatus;
     });
-  }, [invoices, searchQuery, statusFilter]);
+    return sortInvoices(filtered, sortOption);
+  }, [invoices, searchQuery, statusFilter, sortOption]);
 
   const handleMarkPaid = (id: string) => {
+    const paidDate = new Date().toISOString().split("T")[0];
     onUpdateInvoices((prev) =>
       prev.map((inv) =>
         inv.id === id
-          ? { ...inv, status: "Paid" as const, dueDaysOverdue: 0, dueLabel: "" }
+          ? { ...inv, status: "Paid" as const, dueDaysOverdue: 0, dueLabel: "", paidDate }
           : inv
       )
     );
@@ -259,6 +289,8 @@ export function InvoiceDashboard({
         onSearchChange={setSearchQuery}
         statusFilter={statusFilter}
         onStatusChange={setStatusFilter}
+        sortOption={sortOption}
+        onSortChange={setSortOption}
         counts={counts}
       />
 
