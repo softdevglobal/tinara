@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { FileText, Users, ClipboardList } from "lucide-react";
+import { FileText, Users, ClipboardList, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
@@ -10,6 +10,7 @@ interface AppLayoutProps {
 const navItems = [
   { label: "Invoices", href: "/", icon: FileText },
   { label: "Quotes", href: "/quotes", icon: ClipboardList },
+  { label: "Recurring", href: "/recurring", icon: Repeat },
   { label: "Clients", href: "/clients", icon: Users },
 ];
 
