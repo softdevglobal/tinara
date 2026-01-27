@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Search, ArrowUpDown, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InvoiceSortOption } from "@/data/invoices";
@@ -45,31 +46,36 @@ const sortOptions: { value: InvoiceSortOption; label: string }[] = [
   { value: "amount-asc", label: "Amount (Low)" },
 ];
 
-export function InvoiceFilters({
-  searchQuery,
-  onSearchChange,
-  statusFilter,
-  onStatusChange,
-  sortOption,
-  onSortChange,
-  counts,
-  isSelectMode,
-  onToggleSelectMode,
-}: InvoiceFiltersProps) {
-  return (
-    <div className="flex flex-col gap-4 mb-6">
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search invoices..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-shadow"
-          />
-        </div>
+export const InvoiceFilters = forwardRef<HTMLInputElement, InvoiceFiltersProps>(
+  function InvoiceFilters(
+    {
+      searchQuery,
+      onSearchChange,
+      statusFilter,
+      onStatusChange,
+      sortOption,
+      onSortChange,
+      counts,
+      isSelectMode,
+      onToggleSelectMode,
+    },
+    ref
+  ) {
+    return (
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              ref={ref}
+              type="text"
+              placeholder="Search invoices... (⌘K)"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-shadow"
+            />
+          </div>
 
         {/* Select Mode Toggle */}
         <Button
@@ -123,8 +129,9 @@ export function InvoiceFilters({
               {counts[option.value]}
             </span>
           </button>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);

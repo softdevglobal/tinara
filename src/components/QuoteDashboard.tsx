@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Quote, QuoteSortOption } from "@/data/quotes";
 import { Invoice } from "@/data/invoices";
 import { Client } from "@/data/clients";
@@ -12,6 +12,7 @@ import { generateQuotePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
 import { QuoteFormData } from "@/lib/quote-schema";
 import { useApp } from "@/context/AppContext";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 type StatusFilter = "all" | "Draft" | "Sent" | "Accepted" | "Expired" | "Converted";
 type View = "list" | "detail" | "new" | "edit";
@@ -70,9 +71,36 @@ export function QuoteDashboard({
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectMode, setIsSelectMode] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
 
+  // Keyboard shortcuts
+  useKeyboardShortcuts(
+    {
+      onNewItem: () => {
+        if (view === "list") {
+          setView("new");
+        }
+      },
+      onToggleSelectMode: () => {
+        if (view === "list") {
+          setIsSelectMode((prev) => {
+            if (prev) setSelectedIds(new Set());
+            return !prev;
+          });
+        }
+      },
+      onFocusSearch: () => {
+        if (view === "list") {
+          searchInputRef.current?.focus();
+        }
+      },
+    },
+    view === "list"
+  );
+
+  // Sync with prop
   if (showNewForm && view !== "new") {
     setView("new");
   }
@@ -341,6 +369,7 @@ export function QuoteDashboard({
   return (
     <div className="animate-fade-in">
       <QuoteFilters
+        ref={searchInputRef}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         statusFilter={statusFilter}

@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Search, ArrowUpDown, CheckSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -43,31 +44,36 @@ const sortOptions: { value: QuoteSortOption; label: string }[] = [
   { value: "amount-asc", label: "Amount (Low)" },
 ];
 
-export function QuoteFilters({
-  searchQuery,
-  onSearchChange,
-  statusFilter,
-  onStatusChange,
-  sortOption,
-  onSortChange,
-  counts,
-  isSelectMode,
-  onToggleSelectMode,
-}: QuoteFiltersProps) {
-  return (
-    <div className="mb-6 space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search quotes..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+export const QuoteFilters = forwardRef<HTMLInputElement, QuoteFiltersProps>(
+  function QuoteFilters(
+    {
+      searchQuery,
+      onSearchChange,
+      statusFilter,
+      onStatusChange,
+      sortOption,
+      onSortChange,
+      counts,
+      isSelectMode,
+      onToggleSelectMode,
+    },
+    ref
+  ) {
+    return (
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={ref}
+              type="text"
+              placeholder="Search quotes... (⌘K)"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
         {/* Sort Dropdown */}
         <Select value={sortOption} onValueChange={(v) => onSortChange(v as QuoteSortOption)}>
@@ -116,8 +122,9 @@ export function QuoteFilters({
               ({counts[option.value]})
             </span>
           </button>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);
