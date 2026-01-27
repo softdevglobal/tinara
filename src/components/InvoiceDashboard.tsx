@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Invoice, InvoiceSortOption } from "@/data/invoices";
 import { Client } from "@/data/clients";
 import { InvoiceFilters } from "./InvoiceFilters";
@@ -11,6 +11,7 @@ import { generateInvoicePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceFormData } from "@/lib/invoice-schema";
 import { useApp } from "@/context/AppContext";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 type StatusFilter = "all" | "Opened" | "Paid" | "Overdue";
 type View = "list" | "detail" | "new" | "edit";
@@ -67,8 +68,34 @@ export function InvoiceDashboard({
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectMode, setIsSelectMode] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts(
+    {
+      onNewItem: () => {
+        if (view === "list") {
+          setView("new");
+        }
+      },
+      onToggleSelectMode: () => {
+        if (view === "list") {
+          setIsSelectMode((prev) => {
+            if (prev) setSelectedIds(new Set());
+            return !prev;
+          });
+        }
+      },
+      onFocusSearch: () => {
+        if (view === "list") {
+          searchInputRef.current?.focus();
+        }
+      },
+    },
+    view === "list"
+  );
 
   // Sync with prop
   if (showNewForm && view !== "new") {
@@ -347,6 +374,7 @@ export function InvoiceDashboard({
   return (
     <div className="animate-fade-in">
       <InvoiceFilters
+        ref={searchInputRef}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         statusFilter={statusFilter}
