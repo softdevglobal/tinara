@@ -6,6 +6,7 @@ import { QuoteFilters } from "./QuoteFilters";
 import { QuoteListItem } from "./QuoteListItem";
 import { QuoteCard } from "./QuoteCard";
 import { NewQuoteForm } from "./NewQuoteForm";
+import { QuoteBulkActionsBar } from "./QuoteBulkActionsBar";
 import { ArrowLeft, FileText } from "lucide-react";
 import { generateQuotePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +68,8 @@ export function QuoteDashboard({
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectMode, setIsSelectMode] = useState(false);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
 
@@ -141,10 +144,69 @@ export function QuoteDashboard({
 
   const handleDelete = (id: string) => {
     onUpdateQuotes((prev) => prev.filter((q) => q.id !== id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     toast({
       title: "Quote deleted",
       description: "The quote has been removed.",
     });
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredQuotes.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredQuotes.map((q) => q.id)));
+    }
+  };
+
+  const handleBulkAccept = () => {
+    const acceptedDate = new Date().toISOString().split("T")[0];
+    onUpdateQuotes((prev) =>
+      prev.map((q) =>
+        selectedIds.has(q.id)
+          ? { ...q, status: "Accepted" as const, acceptedDate }
+          : q
+      )
+    );
+    toast({
+      title: "Quotes accepted",
+      description: `${selectedIds.size} quotes have been marked as accepted.`,
+    });
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+  };
+
+  const handleBulkDelete = () => {
+    onUpdateQuotes((prev) => prev.filter((q) => !selectedIds.has(q.id)));
+    toast({
+      title: "Quotes deleted",
+      description: `${selectedIds.size} quotes have been removed.`,
+    });
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+  };
+
+  const handleToggleSelectMode = () => {
+    setIsSelectMode((prev) => !prev);
+    if (isSelectMode) {
+      setSelectedIds(new Set());
+    }
   };
 
   const handleEdit = (quote: Quote) => {
@@ -286,7 +348,20 @@ export function QuoteDashboard({
         sortOption={sortOption}
         onSortChange={setSortOption}
         counts={counts}
+        isSelectMode={isSelectMode}
+        onToggleSelectMode={handleToggleSelectMode}
       />
+
+      {isSelectMode && (
+        <QuoteBulkActionsBar
+          selectedCount={selectedIds.size}
+          totalCount={filteredQuotes.length}
+          onSelectAll={handleSelectAll}
+          onAccept={handleBulkAccept}
+          onDelete={handleBulkDelete}
+          onCancel={handleToggleSelectMode}
+        />
+      )}
 
       {filteredQuotes.length === 0 ? (
         <div className="text-center py-12">
@@ -314,6 +389,9 @@ export function QuoteDashboard({
               onConvertToInvoice={onConvertToInvoice}
               onDownloadPdf={handleDownloadPdf}
               onDelete={handleDelete}
+              isSelectMode={isSelectMode}
+              isSelected={selectedIds.has(quote.id)}
+              onToggleSelect={handleToggleSelect}
             />
           ))}
         </div>
