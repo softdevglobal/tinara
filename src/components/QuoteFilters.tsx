@@ -1,4 +1,4 @@
-import { Search, ArrowUpDown } from "lucide-react";
+import { Search, ArrowUpDown, CheckSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { QuoteSortOption } from "@/data/quotes";
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 type StatusFilter = "all" | "Draft" | "Sent" | "Accepted" | "Expired" | "Converted";
 
@@ -20,6 +21,8 @@ interface QuoteFiltersProps {
   sortOption: QuoteSortOption;
   onSortChange: (sort: QuoteSortOption) => void;
   counts: Record<StatusFilter, number>;
+  isSelectMode?: boolean;
+  onToggleSelectMode?: () => void;
 }
 
 const filterOptions: { value: StatusFilter; label: string }[] = [
@@ -48,6 +51,8 @@ export function QuoteFilters({
   sortOption,
   onSortChange,
   counts,
+  isSelectMode,
+  onToggleSelectMode,
 }: QuoteFiltersProps) {
   return (
     <div className="mb-6 space-y-4">
@@ -78,6 +83,19 @@ export function QuoteFilters({
             ))}
           </SelectContent>
         </Select>
+
+        {/* Select Mode Toggle */}
+        {onToggleSelectMode && (
+          <Button
+            variant={isSelectMode ? "default" : "outline"}
+            size="default"
+            onClick={onToggleSelectMode}
+            className="gap-2"
+          >
+            <CheckSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">Select</span>
+          </Button>
+        )}
       </div>
 
       {/* Status Filters */}
