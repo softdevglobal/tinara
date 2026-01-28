@@ -1,32 +1,42 @@
+/**
+ * Document Types and Interfaces
+ * 
+ * Core types for invoice and quote creation workflow
+ */
+
 import { DocumentLineItem } from "@/lib/line-item-schema";
-import { DocumentTotals } from "@/data/invoices";
+import { 
+  TaxCategory, 
+  CustomerType, 
+  PricingMode, 
+  RoundingMode,
+  TaxType,
+} from "@/types/tax-settings";
 
-/**
- * Document type - invoice or quote
- */
+// ============================================
+// DOCUMENT ENUMS
+// ============================================
+
 export type DocumentType = "invoice" | "quote";
+export type DocumentCreationTab = "create" | "preview" | "send";
 
-/**
- * Document status types
- */
-export type InvoiceStatus = "Draft" | "Opened" | "Sent" | "Paid" | "Overdue" | "Void";
-export type QuoteStatus = "Draft" | "Unsent" | "Sent" | "Opened" | "Approved" | "Accepted" | "Declined" | "Expired" | "Converted";
+export type InvoiceStatus = "Draft" | "Sent" | "Opened" | "Paid" | "Overdue" | "Void" | "Cancelled";
+export type QuoteStatus = "Draft" | "Sent" | "Opened" | "Accepted" | "Declined" | "Expired" | "Converted" | "Unsent" | "Approved";
 
-/**
- * Payment terms options
- */
-export type PaymentTerms = "same_day" | "7_days" | "14_days" | "30_days" | "60_days" | "custom";
+export type PaymentTerms = "due_on_receipt" | "same_day" | "7_days" | "14_days" | "30_days" | "60_days" | "custom";
 
 export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
+  due_on_receipt: "Due on Receipt",
   same_day: "Same day",
-  "7_days": "7 days",
-  "14_days": "14 days",
-  "30_days": "30 days",
-  "60_days": "60 days",
+  "7_days": "Net 7",
+  "14_days": "Net 14",
+  "30_days": "Net 30",
+  "60_days": "Net 60",
   custom: "Custom",
 };
 
 export const PAYMENT_TERMS_DAYS: Record<Exclude<PaymentTerms, "custom">, number> = {
+  due_on_receipt: 0,
   same_day: 0,
   "7_days": 7,
   "14_days": 14,
@@ -34,57 +44,159 @@ export const PAYMENT_TERMS_DAYS: Record<Exclude<PaymentTerms, "custom">, number>
   "60_days": 60,
 };
 
-/**
- * Client snapshot - captured at document creation time
- * Changes to the client record won't affect issued documents
- */
+// ============================================
+// CLIENT SNAPSHOT
+// ============================================
+
 export interface ClientSnapshot {
   id: string;
   name: string;
   company?: string;
   email: string;
   phone?: string;
+  mobile?: string;
+  
+  // Customer type for tax purposes
+  customerType?: CustomerType;
+  
+  // Address at time of document creation
   billingAddress?: {
     street?: string;
     city?: string;
     state?: string;
     postcode?: string;
-    country: string;
+    country?: string;
+    countryCode?: string;
   };
-  customerType?: "business" | "individual";
+  
+  shippingAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postcode?: string;
+    country?: string;
+    countryCode?: string;
+  };
+  
+  // Tax ID captured at document creation
   taxId?: string;
   taxIdValidated?: boolean;
 }
 
-/**
- * Deposit request for quotes/invoices
- */
+// ============================================
+// TAX CONTEXT SNAPSHOTS
+// ============================================
+
+export interface CompanyTaxSnapshot {
+  companyName: string;
+  countryCode: string;
+  regionCode?: string;
+  taxIdLabel: string;
+  taxIdValue: string;
+  taxSchemeId: string;
+  taxSchemeName: string;
+  taxType: TaxType;
+}
+
+export interface CustomerTaxSnapshot {
+  customerType: CustomerType;
+  countryCode: string;
+  regionCode?: string;
+  taxIdValue?: string;
+  taxIdValidated: boolean;
+  exemptionReason?: string;
+}
+
+export interface DocumentTaxContext {
+  companyTaxSnapshot: CompanyTaxSnapshot;
+  customerTaxSnapshot: CustomerTaxSnapshot;
+  pricingModeSnapshot: PricingMode;
+  currencySnapshot: string;
+  roundingModeSnapshot: RoundingMode;
+  roundingPrecisionSnapshot: number;
+  createdAt: string;
+}
+
+// ============================================
+// DEPOSIT REQUEST
+// ============================================
+
 export interface DepositRequest {
   type: "percent" | "fixed";
   value: number;
   dueDate: string;
   amountPaid: number;
   description?: string;
+  paymentMethods?: {
+    stripe: boolean;
+    paypal: boolean;
+    bankTransfer: boolean;
+  };
 }
 
-/**
- * Attachment for documents
- */
+// ============================================
+// ATTACHMENTS
+// ============================================
+
 export interface DocumentAttachment {
   id: string;
   filename: string;
-  size: number;
   contentType: string;
+  size: number;
+  sizeBytes?: number;
+  url?: string;
   uploadedBy: string;
   uploadedAt: string;
-  clientVisible: boolean;
-  url?: string;
+  isVisibleToClient?: boolean;
+  clientVisible?: boolean;
 }
 
-/**
- * Document creation form data
- * This is the data structure used in the form before saving
- */
+// ============================================
+// AUDIT METADATA
+// ============================================
+
+export interface DocumentAuditMeta {
+  createdBy: string;
+  createdAt: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  issuedBy?: string;
+  issuedAt?: string;
+  sentBy?: string;
+  sentAt?: string;
+  voidedBy?: string;
+  voidedAt?: string;
+  voidReason?: string;
+}
+
+// ============================================
+// DOCUMENT TOTALS
+// ============================================
+
+export interface DocumentTotals {
+  subtotalCents: number;
+  discountCents: number;
+  taxCents: number;
+  totalCents: number;
+  paidCents?: number;
+  balanceCents?: number;
+  depositRequestedCents?: number;
+  depositPaidCents?: number;
+}
+
+export interface TaxBreakdownLine {
+  taxName: string;
+  taxCategory: TaxCategory;
+  taxRatePercent: number;
+  taxableCents: number;
+  taxCents: number;
+  isReverseCharge: boolean;
+}
+
+// ============================================
+// DOCUMENT FORM DATA
+// ============================================
+
 export interface DocumentFormData {
   type: DocumentType;
   
@@ -121,9 +233,10 @@ export interface DocumentFormData {
   attachments?: DocumentAttachment[];
 }
 
-/**
- * Email send data
- */
+// ============================================
+// EMAIL SEND DATA
+// ============================================
+
 export interface EmailSendData {
   to: string;
   cc?: string[];
@@ -134,10 +247,9 @@ export interface EmailSendData {
   includePaymentLink: boolean;
 }
 
-/**
- * Document creation tabs
- */
-export type DocumentCreationTab = "create" | "preview" | "send";
+// ============================================
+// HELPERS
+// ============================================
 
 /**
  * Calculate due date from issue date and payment terms
@@ -153,10 +265,81 @@ export function calculateDueDate(issueDate: Date, terms: PaymentTerms, customDay
 }
 
 /**
- * Calculate valid until date for quotes (default 30 days)
+ * Calculate quote valid until date (default 30 days)
  */
-export function calculateValidUntil(issueDate: Date, days: number = 30): Date {
-  const validUntil = new Date(issueDate);
-  validUntil.setDate(validUntil.getDate() + days);
-  return validUntil;
+export function calculateValidUntil(issueDate: Date, daysValid: number = 30): Date {
+  const valid = new Date(issueDate);
+  valid.setDate(valid.getDate() + daysValid);
+  return valid;
+}
+
+/**
+ * Get payment terms label
+ */
+export function getPaymentTermsLabel(terms: PaymentTerms): string {
+  return PAYMENT_TERMS_LABELS[terms] || terms;
+}
+
+/**
+ * Format days label for due/overdue display
+ */
+export function formatDaysLabel(dueDate: Date): { days: number; label: string; isOverdue: boolean } {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  
+  const diffTime = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return { days: 0, label: "Due today", isOverdue: false };
+  } else if (diffDays > 0) {
+    return { days: diffDays, label: `Due in ${diffDays} day${diffDays === 1 ? "" : "s"}`, isOverdue: false };
+  } else {
+    const overdueDays = Math.abs(diffDays);
+    return { days: overdueDays, label: `${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue`, isOverdue: true };
+  }
+}
+
+/**
+ * Check if document can be edited based on status
+ */
+export function canEditDocument(status: InvoiceStatus | QuoteStatus, hasPaidAmount: boolean): {
+  canEdit: boolean;
+  requiresWarning: boolean;
+  message?: string;
+} {
+  // Voided documents cannot be edited
+  if (status === "Void" || status === "Cancelled") {
+    return {
+      canEdit: false,
+      requiresWarning: false,
+      message: "Voided documents cannot be edited",
+    };
+  }
+  
+  // Paid invoices require credit note workflow
+  if (status === "Paid" || hasPaidAmount) {
+    return {
+      canEdit: false,
+      requiresWarning: false,
+      message: "Documents with payments require credit note for changes",
+    };
+  }
+  
+  // Drafts can always be edited
+  if (status === "Draft" || status === "Unsent") {
+    return {
+      canEdit: true,
+      requiresWarning: false,
+    };
+  }
+  
+  // Sent/Issued documents can be edited with warning
+  return {
+    canEdit: true,
+    requiresWarning: true,
+    message: "This document has been sent. Changes will create a revision.",
+  };
 }

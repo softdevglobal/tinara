@@ -1,4 +1,12 @@
 import { DocumentLineItem } from "@/lib/line-item-schema";
+import { 
+  ClientSnapshot, 
+  DocumentTaxContext, 
+  DocumentAuditMeta, 
+  DocumentAttachment,
+  TaxBreakdownLine,
+  InvoiceStatus,
+} from "@/types/document";
 
 /**
  * Document totals - stored for performance, calculated from line items
@@ -8,6 +16,9 @@ export interface DocumentTotals {
   discountCents: number;
   taxCents: number;
   totalCents: number;
+  paidCents?: number;
+  balanceCents?: number;
+  taxBreakdown?: TaxBreakdownLine[];
 }
 
 export interface Invoice {
@@ -20,16 +31,36 @@ export interface Invoice {
   dueDate: string;
   dueDaysOverdue: number;
   dueLabel: string;
-  status: "Opened" | "Paid" | "Overdue";
+  status: InvoiceStatus;
   currency: string;
   paidDate?: string;
   notes?: string;
+
+  // Client snapshot (captured at issue time)
+  clientSnapshot?: ClientSnapshot;
+  
+  // Tax context (captured at issue time)
+  documentTaxContext?: DocumentTaxContext;
 
   // Line items as immutable snapshots
   lineItems: DocumentLineItem[];
 
   // Computed totals (stored for performance)
   totals: DocumentTotals;
+  
+  // Attachments
+  attachments?: DocumentAttachment[];
+  
+  // Audit trail
+  auditMeta?: DocumentAuditMeta;
+  
+  // References
+  quoteId?: string;           // If converted from quote
+  poNumber?: string;
+  projectId?: string;
+  tags?: string[];
+  internalNotes?: string;
+  paymentInstructions?: string;
 
   // DEPRECATED: Keep for backwards compat with legacy invoices
   total?: number;

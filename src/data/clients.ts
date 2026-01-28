@@ -1,3 +1,17 @@
+import { CustomerType, TaxCategory } from "@/types/tax-settings";
+
+export type ClientPaymentTerms = "Due on receipt" | "Net 7" | "Net 14" | "Net 30" | "Net 60" | "Custom";
+export type ClientTaxTreatment = "STANDARD" | "EXEMPT" | "REVERSE_CHARGE";
+
+export interface ClientAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  countryCode?: string;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -6,15 +20,20 @@ export interface Client {
   phone?: string;
   mobile?: string;
   website?: string;
+  
+  // Tax-related fields
   taxNumber?: string;
-  billingAddress?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
-  };
-  paymentTerms?: "Due on receipt" | "Net 7" | "Net 14" | "Net 30" | "Net 60" | "Custom";
+  taxIdValidated?: boolean;
+  customerType?: CustomerType;
+  taxTreatment?: ClientTaxTreatment;
+  defaultCurrencyOverride?: string;
+  
+  // Addresses
+  billingAddress?: ClientAddress;
+  shippingAddress?: ClientAddress;
+  
+  // Business details
+  paymentTerms?: ClientPaymentTerms;
   notes?: string;
   createdAt?: string;
 }

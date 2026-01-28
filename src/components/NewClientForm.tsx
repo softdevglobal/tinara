@@ -1,10 +1,11 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { X } from "lucide-react";
+import { X, Building2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -20,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Client } from "@/data/clients";
+import { Client, ClientPaymentTerms } from "@/data/clients";
+import { CustomerType } from "@/types/tax-settings";
 
 const newClientSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -30,12 +32,25 @@ const newClientSchema = z.object({
   mobile: z.string().max(20).optional(),
   website: z.string().max(255).optional(),
   taxNumber: z.string().max(50).optional(),
+  taxIdValidated: z.boolean().optional(),
+  customerType: z.enum(["BUSINESS", "INDIVIDUAL"]).optional(),
   paymentTerms: z.enum(["Due on receipt", "Net 7", "Net 14", "Net 30", "Net 60", "Custom"]).optional(),
+  defaultCurrencyOverride: z.string().max(3).optional(),
+  // Billing address
   billingStreet: z.string().max(255).optional(),
   billingCity: z.string().max(100).optional(),
   billingState: z.string().max(100).optional(),
   billingPostalCode: z.string().max(20).optional(),
   billingCountry: z.string().max(100).optional(),
+  billingCountryCode: z.string().max(2).optional(),
+  // Shipping address
+  shippingStreet: z.string().max(255).optional(),
+  shippingCity: z.string().max(100).optional(),
+  shippingState: z.string().max(100).optional(),
+  shippingPostalCode: z.string().max(20).optional(),
+  shippingCountry: z.string().max(100).optional(),
+  shippingCountryCode: z.string().max(2).optional(),
+  sameAsBilling: z.boolean().optional(),
   notes: z.string().max(500).optional(),
 });
 
@@ -57,15 +72,29 @@ export function NewClientForm({ onSubmit, onCancel }: NewClientFormProps) {
       mobile: "",
       website: "",
       taxNumber: "",
+      taxIdValidated: false,
+      customerType: "BUSINESS",
       paymentTerms: undefined,
+      defaultCurrencyOverride: "",
       billingStreet: "",
       billingCity: "",
       billingState: "",
       billingPostalCode: "",
       billingCountry: "",
+      billingCountryCode: "",
+      shippingStreet: "",
+      shippingCity: "",
+      shippingState: "",
+      shippingPostalCode: "",
+      shippingCountry: "",
+      shippingCountryCode: "",
+      sameAsBilling: true,
       notes: "",
     },
   });
+
+  const customerType = form.watch("customerType");
+  const sameAsBilling = form.watch("sameAsBilling");
 
   const handleSubmit = (data: NewClientFormData) => {
     const newClient: Client = {
@@ -77,13 +106,25 @@ export function NewClientForm({ onSubmit, onCancel }: NewClientFormProps) {
       mobile: data.mobile || undefined,
       website: data.website || undefined,
       taxNumber: data.taxNumber || undefined,
-      paymentTerms: data.paymentTerms || undefined,
+      taxIdValidated: data.taxIdValidated || false,
+      customerType: data.customerType as CustomerType || "BUSINESS",
+      paymentTerms: data.paymentTerms as ClientPaymentTerms || undefined,
+      defaultCurrencyOverride: data.defaultCurrencyOverride || undefined,
       billingAddress: data.billingStreet ? {
         street: data.billingStreet || undefined,
         city: data.billingCity || undefined,
         state: data.billingState || undefined,
         postalCode: data.billingPostalCode || undefined,
         country: data.billingCountry || undefined,
+        countryCode: data.billingCountryCode || undefined,
+      } : undefined,
+      shippingAddress: !data.sameAsBilling && data.shippingStreet ? {
+        street: data.shippingStreet || undefined,
+        city: data.shippingCity || undefined,
+        state: data.shippingState || undefined,
+        postalCode: data.shippingPostalCode || undefined,
+        country: data.shippingCountry || undefined,
+        countryCode: data.shippingCountryCode || undefined,
       } : undefined,
       notes: data.notes || undefined,
       createdAt: new Date().toISOString().split("T")[0],
@@ -108,6 +149,33 @@ export function NewClientForm({ onSubmit, onCancel }: NewClientFormProps) {
 
       <Form {...form}>
         <div className="space-y-4">
+          {/* Customer Type */}
+          <div className="space-y-2">
+            <FormLabel>Customer Type</FormLabel>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={customerType === "BUSINESS" ? "default" : "outline"}
+                size="sm"
+                onClick={() => form.setValue("customerType", "BUSINESS")}
+                className="flex-1"
+              >
+                <Building2 className="h-4 w-4 mr-1" />
+                Business
+              </Button>
+              <Button
+                type="button"
+                variant={customerType === "INDIVIDUAL" ? "default" : "outline"}
+                size="sm"
+                onClick={() => form.setValue("customerType", "INDIVIDUAL")}
+                className="flex-1"
+              >
+                <User className="h-4 w-4 mr-1" />
+                Individual
+              </Button>
+            </div>
+          </div>
+
           {/* Contact Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField

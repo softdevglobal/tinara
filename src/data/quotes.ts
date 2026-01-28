@@ -1,12 +1,13 @@
 import { DocumentLineItem } from "@/lib/line-item-schema";
 import { DocumentTotals } from "./invoices";
-
-export interface QuoteDepositRequest {
-  type: "percent" | "fixed";
-  value: number;
-  dueDate: string;
-  amountPaid: number;
-}
+import { 
+  ClientSnapshot, 
+  DocumentTaxContext, 
+  DocumentAuditMeta, 
+  DocumentAttachment,
+  DepositRequest,
+  QuoteStatus,
+} from "@/types/document";
 
 export interface Quote {
   id: string;
@@ -17,22 +18,44 @@ export interface Quote {
   validUntil: string;
   validDaysRemaining: number;
   validLabel: string;
-  status: "Draft" | "Sent" | "Accepted" | "Expired" | "Converted" | "Unsent" | "Opened" | "Approved";
+  status: QuoteStatus;
   currency: string;
   acceptedDate?: string;
   projectId?: string;
-  depositRequest?: QuoteDepositRequest;
+  depositRequest?: DepositRequest;
   comments?: string;
+
+  // Client snapshot (captured at issue time)
+  clientSnapshot?: ClientSnapshot;
+  
+  // Tax context (captured at issue time)
+  documentTaxContext?: DocumentTaxContext;
 
   // Line items as immutable snapshots
   lineItems: DocumentLineItem[];
 
   // Computed totals (stored for performance)
   totals: DocumentTotals;
+  
+  // Attachments
+  attachments?: DocumentAttachment[];
+  
+  // Audit trail
+  auditMeta?: DocumentAuditMeta;
+  
+  // References
+  convertedToInvoiceId?: string;  // If converted to invoice
+  poNumber?: string;
+  tags?: string[];
+  internalNotes?: string;
+  paymentInstructions?: string;
 
   // DEPRECATED: Keep for backwards compat with legacy quotes
   total?: number;
 }
+
+// Re-export DepositRequest for backwards compat
+export type { DepositRequest as QuoteDepositRequest } from "@/types/document";
 
 export type QuoteSortOption = "date-desc" | "date-asc" | "accepted-desc" | "accepted-asc" | "amount-desc" | "amount-asc";
 

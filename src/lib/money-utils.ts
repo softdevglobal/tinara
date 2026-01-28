@@ -4,12 +4,13 @@
  */
 
 /**
- * Format cents as AUD currency display string
+ * Format cents as currency display string
+ * Supports different currencies (defaults to AUD)
  */
-export function centsToDisplay(cents: number): string {
+export function centsToDisplay(cents: number, currency: string = "AUD"): string {
   return new Intl.NumberFormat("en-AU", {
     style: "currency",
-    currency: "AUD",
+    currency: currency,
     minimumFractionDigits: 2,
   }).format(cents / 100);
 }
