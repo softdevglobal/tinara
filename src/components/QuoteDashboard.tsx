@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Quote, QuoteSortOption } from "@/data/quotes";
 import { Invoice } from "@/data/invoices";
 import { Client } from "@/data/clients";
@@ -19,7 +19,7 @@ interface QuoteDashboardProps {
   projects: Project[];
   onUpdateQuotes: React.Dispatch<React.SetStateAction<Quote[]>>;
   onAddClient: (client: Client) => void;
-  onConvertToInvoice: (quote: Quote) => void;
+  onConvertToInvoice: (quote: Quote) => Invoice;
   showNewForm?: boolean;
   onCloseNewForm?: () => void;
 }
@@ -74,7 +74,7 @@ export function QuoteDashboard({
     if (showNewForm && view !== "new") {
       setView("new");
     }
-  }, [showNewForm]);
+  }, [showNewForm, view]);
 
   const filteredQuotes = useMemo(() => {
     const filtered = quotes.filter((quote) => {
@@ -139,6 +139,17 @@ export function QuoteDashboard({
     onCloseNewForm?.();
   };
 
+  // Handle convert to invoice from within form
+  const handleConvertFromForm = () => {
+    if (editingQuote) {
+      const newInvoice = onConvertToInvoice(editingQuote);
+      setEditingQuote(null);
+      setView("list");
+      return newInvoice;
+    }
+    return null;
+  };
+
   if (view === "new") {
     return (
       <DocumentCreationForm
@@ -160,6 +171,7 @@ export function QuoteDashboard({
         editingDocument={editingQuote}
         clients={clients}
         onAddClient={onAddClient}
+        onConvertToInvoice={handleConvertFromForm}
       />
     );
   }

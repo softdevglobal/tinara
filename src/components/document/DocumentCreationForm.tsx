@@ -52,6 +52,7 @@ interface DocumentCreationFormProps {
   editingDocument?: Invoice | Quote;
   clients: Client[];
   onAddClient: (client: Client) => void;
+  onConvertToInvoice?: () => Invoice | null;
 }
 
 interface FormLineItem {
@@ -91,6 +92,7 @@ export function DocumentCreationForm({
   editingDocument,
   clients,
   onAddClient,
+  onConvertToInvoice,
 }: DocumentCreationFormProps) {
   const { toast } = useToast();
   const { brandingSettings } = useApp();
@@ -397,15 +399,24 @@ export function DocumentCreationForm({
     });
   };
 
+  // Handle convert to invoice action
+  const handleConvertToInvoice = () => {
+    if (onConvertToInvoice) {
+      onConvertToInvoice();
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <DocumentFormHeader
         type={type}
         isEditing={isEditing}
         documentNumber={documentNumber}
+        status={status as any}
         hasUnsavedChanges={hasUnsavedChanges}
         onBack={onBack}
         onSave={handleSave}
+        onConvertToInvoice={type === "quote" && isEditing ? handleConvertToInvoice : undefined}
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentCreationTab)}>
