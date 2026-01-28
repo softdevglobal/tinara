@@ -8,6 +8,7 @@ import { z } from "zod";
 import { Quote, QuoteDepositRequest } from "@/data/quotes";
 import { Client } from "@/data/clients";
 import { Project } from "@/data/projects";
+import { Item } from "@/data/items";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +16,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Switch } from "@/components/ui/switch";
 import { ClientSelector } from "./ClientSelector";
 import { NewClientForm } from "./NewClientForm";
+import { SmartItemInput } from "./SmartItemInput";
+import { QuickAddItemForm } from "./QuickAddItemForm";
 import { Label } from "@/components/ui/label";
+import { centsToDollars } from "@/lib/money-utils";
 import {
   Popover,
   PopoverContent,
@@ -50,6 +54,7 @@ interface QuoteLineItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  sourceItemId?: string;
 }
 
 const quoteFormSchema = z.object({
@@ -102,6 +107,8 @@ export function EnhancedQuoteForm({
   const [addToFutureEstimates, setAddToFutureEstimates] = useState(true);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [quickAddIndex, setQuickAddIndex] = useState<number | null>(null);
+  const [quickAddName, setQuickAddName] = useState("");
 
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
@@ -174,6 +181,48 @@ export function EnhancedQuoteForm({
       i === index ? { ...item, [field]: value } : item
     );
     setLineItems(updated);
+  };
+
+  const handleItemSelect = (index: number, item: Item) => {
+    const updated = lineItems.map((lineItem, i) =>
+      i === index
+        ? {
+            ...lineItem,
+            description: item.name,
+            unitPrice: centsToDollars(item.unitPriceCents),
+            quantity: item.defaultQty,
+            sourceItemId: item.id,
+          }
+        : lineItem
+    );
+    setLineItems(updated);
+  };
+
+  const handleAddNewItem = (index: number, searchText: string) => {
+    setQuickAddIndex(index);
+    setQuickAddName(searchText);
+  };
+
+  const handleQuickAddComplete = (index: number, item: Item) => {
+    const updated = lineItems.map((lineItem, i) =>
+      i === index
+        ? {
+            ...lineItem,
+            description: item.name,
+            unitPrice: centsToDollars(item.unitPriceCents),
+            quantity: item.defaultQty,
+            sourceItemId: item.id,
+          }
+        : lineItem
+    );
+    setLineItems(updated);
+    setQuickAddIndex(null);
+    setQuickAddName("");
+  };
+
+  const handleQuickAddCancel = () => {
+    setQuickAddIndex(null);
+    setQuickAddName("");
   };
 
   const handleSaveDeposit = () => {
@@ -344,39 +393,54 @@ export function EnhancedQuoteForm({
                     </div>
                     <div className="p-4">
                       <div className="space-y-3">
-                        {lineItems.map((item, index) => (
-                          <div key={item.id} className="flex gap-3 items-start">
-                            <Input
-                              placeholder="Description"
-                              value={item.description}
-                              onChange={(e) => handleUpdateLineItem(index, "description", e.target.value)}
-                              className="flex-1"
-                            />
-                            <Input
-                              type="number"
-                              placeholder="Qty"
-                              value={item.quantity}
-                              onChange={(e) => handleUpdateLineItem(index, "quantity", Number(e.target.value))}
-                              className="w-20"
-                            />
-                            <Input
-                              type="number"
-                              placeholder="Price"
-                              value={item.unitPrice}
-                              onChange={(e) => handleUpdateLineItem(index, "unitPrice", Number(e.target.value))}
-                              className="w-28"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveLineItem(index)}
-                              disabled={lineItems.length === 1}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
+                        {lineItems.map((item, index) => {
+                          const isQuickAddOpen = quickAddIndex === index;
+                          return (
+                            <div key={item.id} className="space-y-2">
+                              <div className="flex gap-3 items-start">
+                                <div className="flex-1">
+                                  <SmartItemInput
+                                    value={item.description}
+                                    onChange={(value) => handleUpdateLineItem(index, "description", value)}
+                                    onItemSelect={(catalogItem) => handleItemSelect(index, catalogItem)}
+                                    onAddNewItem={(searchText) => handleAddNewItem(index, searchText)}
+                                    placeholder="Type item name or code..."
+                                  />
+                                </div>
+                                <Input
+                                  type="number"
+                                  placeholder="Qty"
+                                  value={item.quantity}
+                                  onChange={(e) => handleUpdateLineItem(index, "quantity", Number(e.target.value))}
+                                  className="w-20"
+                                />
+                                <Input
+                                  type="number"
+                                  placeholder="Price"
+                                  value={item.unitPrice}
+                                  onChange={(e) => handleUpdateLineItem(index, "unitPrice", Number(e.target.value))}
+                                  className="w-28"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveLineItem(index)}
+                                  disabled={lineItems.length === 1}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {isQuickAddOpen && (
+                                <QuickAddItemForm
+                                  initialName={quickAddName}
+                                  onAdd={(newItem) => handleQuickAddComplete(index, newItem)}
+                                  onCancel={handleQuickAddCancel}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                       <div className="flex items-center gap-4 mt-4">
                         <button
