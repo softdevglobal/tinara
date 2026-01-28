@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, ArrowUpDown } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, Archive } from "lucide-react";
 import { Item } from "@/data/items";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -18,6 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { centsToDisplay } from "@/lib/money-utils";
+import { TAX_CODE_LABELS } from "@/lib/tax-utils";
 
 interface ItemTableProps {
   items: Item[];
@@ -25,9 +28,10 @@ interface ItemTableProps {
   onSelectionChange: (ids: string[]) => void;
   onEdit?: (item: Item) => void;
   onDelete?: (id: string) => void;
+  onArchive?: (id: string) => void;
 }
 
-type SortField = "name" | "category" | "unitPrice" | "unit";
+type SortField = "name" | "category" | "unitPriceCents" | "unit";
 type SortDirection = "asc" | "desc";
 
 export function ItemTable({
@@ -36,6 +40,7 @@ export function ItemTable({
   onSelectionChange,
   onEdit,
   onDelete,
+  onArchive,
 }: ItemTableProps) {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -58,8 +63,8 @@ export function ItemTable({
       case "category":
         comparison = a.category.localeCompare(b.category);
         break;
-      case "unitPrice":
-        comparison = a.unitPrice - b.unitPrice;
+      case "unitPriceCents":
+        comparison = a.unitPriceCents - b.unitPriceCents;
         break;
       case "unit":
         comparison = a.unit.localeCompare(b.unit);
@@ -82,13 +87,6 @@ export function ItemTable({
     } else {
       onSelectionChange([...selectedIds, id]);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-AU", {
-      style: "currency",
-      currency: "AUD",
-    }).format(amount);
   };
 
   const getCategoryColor = (category: Item["category"]) => {
@@ -135,32 +133,45 @@ export function ItemTable({
               <SortableHeader field="category">Category</SortableHeader>
             </TableHead>
             <TableHead className="text-right">
-              <SortableHeader field="unitPrice">Price</SortableHeader>
+              <SortableHeader field="unitPriceCents">Price</SortableHeader>
             </TableHead>
             <TableHead>
               <SortableHeader field="unit">Unit</SortableHeader>
             </TableHead>
-            <TableHead>Taxable</TableHead>
+            <TableHead>Tax</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead className="w-12"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedItems.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                 No items found.
               </TableCell>
             </TableRow>
           ) : (
             sortedItems.map((item) => (
-              <TableRow key={item.id} className="hover:bg-muted/50">
+              <TableRow 
+                key={item.id} 
+                className={`hover:bg-muted/50 ${!item.isActive ? 'opacity-60' : ''}`}
+              >
                 <TableCell>
                   <Checkbox
                     checked={selectedIds.includes(item.id)}
                     onCheckedChange={() => handleSelectOne(item.id)}
                   />
                 </TableCell>
-                <TableCell className="font-medium">{item.name}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    {item.name}
+                    {item.sku && (
+                      <span className="text-xs text-muted-foreground">
+                        ({item.sku})
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="max-w-xs truncate text-muted-foreground">
                   {item.description || "-"}
                 </TableCell>
@@ -170,13 +181,25 @@ export function ItemTable({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right font-medium">
-                  {formatCurrency(item.unitPrice)}
+                  {centsToDisplay(item.unitPriceCents)}
                 </TableCell>
                 <TableCell className="capitalize">{item.unit}</TableCell>
                 <TableCell>
-                  <Badge variant={item.taxable ? "default" : "outline"}>
-                    {item.taxable ? "Yes" : "No"}
+                  <Badge variant="outline" className="font-normal">
+                    {TAX_CODE_LABELS[item.taxCode]}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  {item.isActive ? (
+                    <Badge variant="default" className="bg-green-500/10 text-green-600 hover:bg-green-500/20">
+                      Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                      <Archive className="h-3 w-3 mr-1" />
+                      Archived
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -189,6 +212,17 @@ export function ItemTable({
                       <DropdownMenuItem onClick={() => onEdit?.(item)}>
                         Edit
                       </DropdownMenuItem>
+                      {item.isActive ? (
+                        <DropdownMenuItem onClick={() => onArchive?.(item.id)}>
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archive
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem onClick={() => onArchive?.(item.id)}>
+                          Restore
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => onDelete?.(item.id)}
                         className="text-destructive"

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LineItem } from "@/lib/invoice-schema";
+import { centsToDisplay } from "@/lib/money-utils";
 
 interface InvoiceTotalsProps {
   lineItems: LineItem[];
@@ -22,14 +23,34 @@ export function InvoiceTotals({
   taxRate,
   onTaxRateChange,
 }: InvoiceTotalsProps) {
-  const { subtotal, taxAmount, total } = useMemo(() => {
-    const subtotal = lineItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
-    const taxAmount = subtotal * (taxRate / 100);
-    const total = subtotal + taxAmount;
-    return { subtotal, taxAmount, total };
+  const { subtotal, taxAmount, total, hasDiscount, totalDiscount } = useMemo(() => {
+    let subtotal = 0;
+    let totalDiscount = 0;
+    
+    for (const item of lineItems) {
+      const lineBase = item.quantity * item.unitPrice;
+      subtotal += lineBase;
+      
+      // Check for extended line items with discount
+      const extendedItem = item as any;
+      if (extendedItem.discountType === "PERCENT" && extendedItem.discountValue > 0) {
+        totalDiscount += lineBase * (extendedItem.discountValue / 100);
+      } else if (extendedItem.discountType === "AMOUNT" && extendedItem.discountValue > 0) {
+        totalDiscount += extendedItem.discountValue;
+      }
+    }
+    
+    const netAmount = subtotal - totalDiscount;
+    const taxAmount = netAmount * (taxRate / 100);
+    const total = netAmount + taxAmount;
+    
+    return { 
+      subtotal, 
+      taxAmount, 
+      total, 
+      hasDiscount: totalDiscount > 0,
+      totalDiscount 
+    };
   }, [lineItems, taxRate]);
 
   return (
@@ -41,10 +62,19 @@ export function InvoiceTotals({
         </span>
       </div>
 
+      {hasDiscount && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Discount</span>
+          <span className="font-medium text-green-600">
+            -{formatCurrency(totalDiscount)}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
           <Label htmlFor="taxRate" className="text-muted-foreground">
-            Tax
+            Tax (GST)
           </Label>
           <div className="flex items-center">
             <Input
