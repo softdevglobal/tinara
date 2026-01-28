@@ -10,6 +10,7 @@ import { Invoice } from "@/data/invoices";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
+import { useDocumentCounters } from "@/context/DocumentCountersContext";
 import {
   Select,
   SelectContent,
@@ -26,6 +27,7 @@ const Quotes = () => {
   const [taxYearFilter, setTaxYearFilter] = useState<string>("all");
   const { quotes, clients, projects, setQuotes, addClient, setInvoices } = useApp();
   const { toast } = useToast();
+  const { generateInvoiceNumber } = useDocumentCounters();
 
   // Sync showNewForm with URL parameter changes (SPA navigation)
   useEffect(() => {
@@ -43,35 +45,70 @@ const Quotes = () => {
   };
 
   const handleConvertToInvoice = (quote: Quote) => {
-    // Use quote's line items and totals if available, otherwise create legacy
-    const totalCents = quote.totals?.totalCents ?? Math.round((quote.total ?? 0) * 100);
+    // Generate a new invoice number using the counter
+    const newInvoiceNumber = generateInvoiceNumber();
     
+    // Calculate due date (14 days from today)
+    const today = new Date();
+    const dueDate = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const dueDays = 14;
+
+    // Create invoice with copied line items and audit trail
     const newInvoice: Invoice = {
       id: `inv_${Date.now()}`,
-      number: `A${Date.now().toString().slice(-8)}`,
+      number: newInvoiceNumber,
       clientName: quote.clientName,
+      clientEmail: quote.clientSnapshot?.email,
       projectName: quote.projectName,
-      date: new Date().toISOString().split("T")[0],
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      projectId: quote.projectId,
+      date: today.toISOString().split("T")[0],
+      dueDate: dueDate.toISOString().split("T")[0],
       dueDaysOverdue: 0,
-      dueLabel: "Due in 14 days",
+      dueLabel: `Due in ${dueDays} days`,
       status: "Opened",
       currency: quote.currency,
-      lineItems: quote.lineItems || [],
-      totals: quote.totals || {
-        subtotalCents: totalCents,
-        discountCents: 0,
-        taxCents: 0,
-        totalCents: totalCents,
-      },
-      total: quote.total, // Keep for backwards compat
+      notes: quote.comments,
+      
+      // Copy snapshots for audit integrity
+      clientSnapshot: quote.clientSnapshot,
+      documentTaxContext: quote.documentTaxContext,
+      
+      // Copy line items (already immutable snapshots)
+      lineItems: quote.lineItems.map(item => ({
+        ...item,
+        id: `li_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        documentId: `inv_${Date.now()}`,
+      })),
+      
+      // Copy totals
+      totals: { ...quote.totals },
+      
+      // Audit trail - link back to quote
+      quoteId: quote.id,
+      
+      // Copy other fields
+      attachments: quote.attachments,
+      poNumber: quote.poNumber,
+      tags: quote.tags,
+      internalNotes: quote.internalNotes,
+      paymentInstructions: quote.paymentInstructions,
+      
+      // Keep for backwards compat
+      total: quote.total,
     };
 
+    // Add new invoice
     setInvoices((prev) => [newInvoice, ...prev]);
+    
+    // Update quote status to Converted and store invoice reference
     setQuotes((prev) =>
       prev.map((q) =>
         q.id === quote.id
-          ? { ...q, status: "Converted" as const }
+          ? { 
+              ...q, 
+              status: "Converted" as const,
+              convertedToInvoiceId: newInvoice.id,
+            }
           : q
       )
     );
@@ -80,6 +117,8 @@ const Quotes = () => {
       title: "Quote converted to invoice",
       description: `Invoice #${newInvoice.number} has been created from Quote #${quote.number}.`,
     });
+    
+    return newInvoice;
   };
 
   // Filter quotes based on Pending/Done tabs
