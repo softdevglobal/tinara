@@ -146,7 +146,7 @@ const Items = () => {
             <Package className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Items</h1>
+            <h1 className="text-[36px] font-semibold text-foreground">Items</h1>
             <p className="text-sm text-muted-foreground">
               Manage your product & service catalog
             </p>
