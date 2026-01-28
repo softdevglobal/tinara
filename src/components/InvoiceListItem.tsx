@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { Invoice } from "@/data/invoices";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import { InvoiceActions } from "./InvoiceActions";
+import { PaymentMethodBadge } from "./MarkAsPaidDialog";
 import { Calendar } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -87,6 +88,13 @@ export function InvoiceListItem({
           <p className="text-xs text-muted-foreground truncate mt-0.5">
             {invoice.projectName}
           </p>
+        )}
+        {invoice.status === "Paid" && invoice.paymentMethod && (
+          <PaymentMethodBadge 
+            method={invoice.paymentMethod} 
+            reference={invoice.paymentReference}
+            className="mt-1"
+          />
         )}
       </div>
 

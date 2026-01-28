@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useApp } from "@/context/AppContext";
+import { PaymentMethodBadge } from "@/components/MarkAsPaidDialog";
 
 interface InvoiceTableProps {
   invoices: Invoice[];
@@ -218,7 +219,19 @@ export function InvoiceTable({
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                <TableCell>
+                  <div>
+                    {getStatusBadge(invoice.status)}
+                    {invoice.status === "Paid" && invoice.paymentMethod && (
+                      <div className="mt-1">
+                        <PaymentMethodBadge 
+                          method={invoice.paymentMethod} 
+                          reference={invoice.paymentReference}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right font-medium">
                   {formatCurrency(invoice.total, invoice.currency)}
                 </TableCell>
