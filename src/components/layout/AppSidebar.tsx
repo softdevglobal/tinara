@@ -106,7 +106,7 @@ export function AppSidebar() {
               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                 <FileText className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="text-2xl font-semibold text-sidebar-foreground">InvoiceApp</span>
+              <span className="text-2xl font-semibold text-sidebar-foreground">BMS PRO Blue</span>
             </div>
           )}
           <Button
