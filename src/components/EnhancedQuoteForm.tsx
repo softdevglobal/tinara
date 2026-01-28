@@ -184,6 +184,10 @@ export function EnhancedQuoteForm({
     const validDays = Math.ceil((data.validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     const quoteNumber = editingQuote?.number || `E${Date.now().toString().slice(-8)}`;
 
+    // Convert to cents for storage
+    const subtotalCents = Math.round(subtotal * 100);
+    const totalCents = Math.round(total * 100);
+
     const newQuote: Quote = {
       id: editingQuote?.id || `quote_${Date.now()}`,
       number: quoteNumber,
@@ -194,11 +198,18 @@ export function EnhancedQuoteForm({
       validDaysRemaining: validDays,
       validLabel: validDays > 0 ? `Valid for ${validDays} days` : "Expired",
       status: "Unsent",
-      total: total,
       currency: "AUD",
       projectId: data.projectId || undefined,
       depositRequest: depositRequest || undefined,
       comments: data.comments || undefined,
+      lineItems: [], // TODO: Convert to DocumentLineItem once form is migrated
+      totals: {
+        subtotalCents,
+        discountCents: 0,
+        taxCents: 0, // TODO: Add per-line tax calculation
+        totalCents,
+      },
+      total, // Keep for backwards compat
     };
 
     onSubmit(newQuote);

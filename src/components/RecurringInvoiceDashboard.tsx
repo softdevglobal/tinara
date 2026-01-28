@@ -95,6 +95,11 @@ export function RecurringInvoiceDashboard({
     const taxAmount = subtotal * (recurring.taxRate / 100);
     const total = subtotal + taxAmount;
 
+    // Convert legacy line items to cents for storage
+    const subtotalCents = Math.round(subtotal * 100);
+    const taxCents = Math.round(taxAmount * 100);
+    const totalCents = Math.round(total * 100);
+
     const newInvoice: Invoice = {
       id: `inv_${Date.now()}`,
       number: `A${Date.now().toString().slice(-8)}`,
@@ -105,8 +110,15 @@ export function RecurringInvoiceDashboard({
       dueDaysOverdue: 0,
       dueLabel: `Due ${new Date(recurring.nextDueDate).toLocaleDateString()}`,
       status: "Opened",
-      total,
       currency: recurring.currency,
+      lineItems: [], // Legacy - generated from recurring template
+      totals: {
+        subtotalCents,
+        discountCents: 0,
+        taxCents,
+        totalCents,
+      },
+      total, // Keep for backwards compat
     };
 
     onAddInvoice(newInvoice);

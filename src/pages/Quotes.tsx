@@ -36,6 +36,9 @@ const Quotes = () => {
   };
 
   const handleConvertToInvoice = (quote: Quote) => {
+    // Use quote's line items and totals if available, otherwise create legacy
+    const totalCents = quote.totals?.totalCents ?? Math.round((quote.total ?? 0) * 100);
+    
     const newInvoice: Invoice = {
       id: `inv_${Date.now()}`,
       number: `A${Date.now().toString().slice(-8)}`,
@@ -46,8 +49,15 @@ const Quotes = () => {
       dueDaysOverdue: 0,
       dueLabel: "Due in 14 days",
       status: "Opened",
-      total: quote.total,
       currency: quote.currency,
+      lineItems: quote.lineItems || [],
+      totals: quote.totals || {
+        subtotalCents: totalCents,
+        discountCents: 0,
+        taxCents: 0,
+        totalCents: totalCents,
+      },
+      total: quote.total, // Keep for backwards compat
     };
 
     setInvoices((prev) => [newInvoice, ...prev]);
@@ -81,7 +91,7 @@ const Quotes = () => {
     }).format(amount);
   };
 
-  const totalAmount = currentQuotes.reduce((sum, q) => sum + q.total, 0);
+  const totalAmount = currentQuotes.reduce((sum, q) => sum + (q.totals?.totalCents ?? Math.round((q.total ?? 0) * 100)) / 100, 0);
 
   return (
     <AppLayout>

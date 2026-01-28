@@ -34,7 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LineItemsEditor } from "./LineItemsEditor";
-import { InvoiceTotals } from "./InvoiceTotals";
+import { LegacyInvoiceTotals } from "./InvoiceTotals";
+import { dollarsToCents } from "@/lib/money-utils";
 import { ClientSelector } from "./ClientSelector";
 import { NewClientForm } from "./NewClientForm";
 import { useToast } from "@/hooks/use-toast";
@@ -349,8 +350,8 @@ export function NewRecurringInvoiceForm({
             />
 
             {/* Totals */}
-            <InvoiceTotals
-              lineItems={lineItems}
+            <LegacyInvoiceTotals
+              subtotalCents={dollarsToCents(lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0))}
               taxRate={taxRate}
               onTaxRateChange={handleTaxRateChange}
             />
