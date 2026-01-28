@@ -1,64 +1,37 @@
 import { useMemo } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { LineItem } from "@/lib/invoice-schema";
+import { DocumentLineItem } from "@/lib/line-item-schema";
+import { calculateDocumentTotals, TAX_CODE_LABELS, TaxCode } from "@/lib/tax-utils";
 import { centsToDisplay } from "@/lib/money-utils";
 
 interface InvoiceTotalsProps {
-  lineItems: LineItem[];
-  taxRate: number;
-  onTaxRateChange: (rate: number) => void;
+  lineItems: DocumentLineItem[];
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-AU", {
-    style: "currency",
-    currency: "AUD",
-    minimumFractionDigits: 2,
-  }).format(amount);
-}
+export function InvoiceTotals({ lineItems }: InvoiceTotalsProps) {
+  const totals = useMemo(() => {
+    return calculateDocumentTotals(lineItems);
+  }, [lineItems]);
 
-export function InvoiceTotals({
-  lineItems,
-  taxRate,
-  onTaxRateChange,
-}: InvoiceTotalsProps) {
-  const { subtotal, taxAmount, total, hasDiscount, totalDiscount } = useMemo(() => {
-    let subtotal = 0;
-    let totalDiscount = 0;
-    
-    for (const item of lineItems) {
-      const lineBase = item.quantity * item.unitPrice;
-      subtotal += lineBase;
-      
-      // Check for extended line items with discount
-      const extendedItem = item as any;
-      if (extendedItem.discountType === "PERCENT" && extendedItem.discountValue > 0) {
-        totalDiscount += lineBase * (extendedItem.discountValue / 100);
-      } else if (extendedItem.discountType === "AMOUNT" && extendedItem.discountValue > 0) {
-        totalDiscount += extendedItem.discountValue;
+  // Check if we have mixed tax codes
+  const taxCodesUsed = useMemo(() => {
+    const codes: TaxCode[] = [];
+    for (const [code, amount] of Object.entries(totals.taxBreakdown)) {
+      if (amount > 0) {
+        codes.push(code as TaxCode);
       }
     }
-    
-    const netAmount = subtotal - totalDiscount;
-    const taxAmount = netAmount * (taxRate / 100);
-    const total = netAmount + taxAmount;
-    
-    return { 
-      subtotal, 
-      taxAmount, 
-      total, 
-      hasDiscount: totalDiscount > 0,
-      totalDiscount 
-    };
-  }, [lineItems, taxRate]);
+    return codes;
+  }, [totals.taxBreakdown]);
+
+  const hasMixedTaxCodes = taxCodesUsed.length > 1;
+  const hasDiscount = totals.discountCents > 0;
 
   return (
     <div className="bg-secondary/50 rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Subtotal</span>
         <span className="font-medium text-foreground">
-          {formatCurrency(subtotal)}
+          {centsToDisplay(totals.subtotalCents)}
         </span>
       </div>
 
@@ -66,18 +39,78 @@ export function InvoiceTotals({
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Discount</span>
           <span className="font-medium text-green-600">
-            -{formatCurrency(totalDiscount)}
+            -{centsToDisplay(totals.discountCents)}
           </span>
         </div>
       )}
 
+      {/* Tax breakdown - show per-code if mixed, otherwise just total */}
+      {hasMixedTaxCodes ? (
+        <div className="space-y-2">
+          {taxCodesUsed.map((code) => (
+            <div key={code} className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{TAX_CODE_LABELS[code]}</span>
+              <span className="font-medium text-foreground">
+                {centsToDisplay(totals.taxBreakdown[code])}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Tax {totals.taxCents > 0 ? "(GST 10%)" : ""}
+          </span>
+          <span className="font-medium text-foreground">
+            {centsToDisplay(totals.taxCents)}
+          </span>
+        </div>
+      )}
+
+      <div className="border-t border-border pt-3 flex items-center justify-between">
+        <span className="font-medium text-foreground">Total</span>
+        <span className="text-xl font-bold text-foreground">
+          {centsToDisplay(totals.totalCents)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Legacy InvoiceTotals that still uses the old taxRate approach
+ * This is used by forms that haven't migrated to DocumentLineItem yet
+ */
+interface LegacyInvoiceTotalsProps {
+  subtotalCents: number;
+  taxRate: number;
+  onTaxRateChange: (rate: number) => void;
+}
+
+export function LegacyInvoiceTotals({
+  subtotalCents,
+  taxRate,
+  onTaxRateChange,
+}: LegacyInvoiceTotalsProps) {
+  const taxCents = Math.round(subtotalCents * (taxRate / 100));
+  const totalCents = subtotalCents + taxCents;
+
+  return (
+    <div className="bg-secondary/50 rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">Subtotal</span>
+        <span className="font-medium text-foreground">
+          {centsToDisplay(subtotalCents)}
+        </span>
+      </div>
+
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          <Label htmlFor="taxRate" className="text-muted-foreground">
+          <label htmlFor="taxRate" className="text-muted-foreground">
             Tax (GST)
-          </Label>
+          </label>
           <div className="flex items-center">
-            <Input
+            <input
               id="taxRate"
               type="number"
               min={0}
@@ -85,20 +118,20 @@ export function InvoiceTotals({
               step={0.5}
               value={taxRate}
               onChange={(e) => onTaxRateChange(parseFloat(e.target.value) || 0)}
-              className="w-16 h-7 text-center text-xs bg-card"
+              className="w-16 h-7 text-center text-xs bg-card border border-input rounded-md px-2"
             />
             <span className="ml-1 text-muted-foreground">%</span>
           </div>
         </div>
         <span className="font-medium text-foreground">
-          {formatCurrency(taxAmount)}
+          {centsToDisplay(taxCents)}
         </span>
       </div>
 
       <div className="border-t border-border pt-3 flex items-center justify-between">
         <span className="font-medium text-foreground">Total</span>
         <span className="text-xl font-bold text-foreground">
-          {formatCurrency(total)}
+          {centsToDisplay(totalCents)}
         </span>
       </div>
     </div>

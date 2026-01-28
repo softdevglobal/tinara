@@ -192,6 +192,11 @@ export function InvoiceDashboard({
     const taxAmount = subtotal * (data.taxRate / 100);
     const total = subtotal + taxAmount;
 
+    // Convert to cents for storage
+    const subtotalCents = Math.round(subtotal * 100);
+    const taxCents = Math.round(taxAmount * 100);
+    const totalCents = Math.round(total * 100);
+
     const newInvoice: Invoice = {
       id: `inv_${Date.now()}`,
       number: `A${Date.now().toString().slice(-8)}`,
@@ -202,8 +207,15 @@ export function InvoiceDashboard({
       dueDaysOverdue: 0,
       dueLabel: `Due in ${Math.ceil((data.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days`,
       status: "Opened",
-      total: total,
       currency: "AUD",
+      lineItems: [], // TODO: Convert to DocumentLineItem once form is migrated
+      totals: {
+        subtotalCents,
+        discountCents: 0,
+        taxCents,
+        totalCents,
+      },
+      total, // Keep for backwards compat
     };
 
     onUpdateInvoices((prev) => [newInvoice, ...prev]);
@@ -224,6 +236,11 @@ export function InvoiceDashboard({
     );
     const taxAmount = subtotal * (data.taxRate / 100);
     const total = subtotal + taxAmount;
+
+    // Convert to cents for storage
+    const subtotalCents = Math.round(subtotal * 100);
+    const taxCents = Math.round(taxAmount * 100);
+    const totalCents = Math.round(total * 100);
 
     const dueDate = data.dueDate;
     const now = new Date();
@@ -256,7 +273,13 @@ export function InvoiceDashboard({
               dueDaysOverdue,
               dueLabel,
               status,
-              total,
+              totals: {
+                subtotalCents,
+                discountCents: 0,
+                taxCents,
+                totalCents,
+              },
+              total, // Keep for backwards compat
             }
           : inv
       )

@@ -110,27 +110,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /**
    * Check if an item is referenced in any invoice or quote line items
-   * This is used to determine if we should archive vs delete
-   * 
-   * Note: Currently invoices/quotes don't store sourceItemId yet.
-   * This will become functional once we migrate to DocumentLineItem format.
-   * For now, returns false to allow deletion.
+   * This determines whether we should archive vs hard delete
    */
-  const isItemReferenced = (_itemId: string): boolean => {
-    // Future implementation: Check invoices and quotes for line items with sourceItemId
-    // Currently the data model doesn't track this yet
-    return false;
+  const isItemReferenced = (itemId: string): boolean => {
+    // Check invoices for line items with sourceItemId
+    const inInvoices = invoices.some(
+      (inv) => inv.lineItems?.some((li) => li.sourceItemId === itemId)
+    );
+
+    // Check quotes for line items with sourceItemId
+    const inQuotes = quotes.some(
+      (q) => q.lineItems?.some((li) => li.sourceItemId === itemId)
+    );
+
+    return inInvoices || inQuotes;
   };
 
   /**
    * Get the count of documents referencing an item
-   * 
-   * Note: Currently invoices/quotes don't store sourceItemId yet.
-   * This will become functional once we migrate to DocumentLineItem format.
+   * Used for archive confirmation messaging
    */
-  const getItemReferenceCount = (_itemId: string): number => {
-    // Future implementation: Count documents with matching sourceItemId
-    return 0;
+  const getItemReferenceCount = (itemId: string): number => {
+    let count = 0;
+
+    for (const inv of invoices) {
+      count += (inv.lineItems || []).filter((li) => li.sourceItemId === itemId).length;
+    }
+
+    for (const q of quotes) {
+      count += (q.lineItems || []).filter((li) => li.sourceItemId === itemId).length;
+    }
+
+    return count;
   };
 
   const value: AppState = {

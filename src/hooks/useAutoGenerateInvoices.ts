@@ -74,6 +74,11 @@ export function useAutoGenerateInvoices({
       const taxAmount = subtotal * (recurring.taxRate / 100);
       const total = subtotal + taxAmount;
 
+      // Convert to cents for storage
+      const subtotalCents = Math.round(subtotal * 100);
+      const taxCents = Math.round(taxAmount * 100);
+      const totalCents = Math.round(total * 100);
+
       const newInvoice: Invoice = {
         id: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         number: `A${Date.now().toString().slice(-8)}`,
@@ -84,8 +89,15 @@ export function useAutoGenerateInvoices({
         dueDaysOverdue: 0,
         dueLabel: `Due ${new Date(recurring.nextDueDate).toLocaleDateString()}`,
         status: "Opened",
-        total,
         currency: recurring.currency,
+        lineItems: [], // Legacy - generated from recurring template
+        totals: {
+          subtotalCents,
+          discountCents: 0,
+          taxCents,
+          totalCents,
+        },
+        total, // Keep for backwards compat
       };
 
       newInvoices.push(newInvoice);

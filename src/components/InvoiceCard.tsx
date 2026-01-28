@@ -1,20 +1,7 @@
 import { Calendar, Clock, FileText, User, Briefcase } from "lucide-react";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
+import { Invoice, getInvoiceTotal } from "@/data/invoices";
 import { cn } from "@/lib/utils";
-
-interface Invoice {
-  id: string;
-  number: string;
-  clientName: string;
-  projectName: string;
-  date: string;
-  dueDate: string;
-  dueDaysOverdue: number;
-  dueLabel: string;
-  status: string;
-  total: number;
-  currency: string;
-}
 
 interface InvoiceCardProps {
   invoice: Invoice;
@@ -107,7 +94,7 @@ export function InvoiceCard({ invoice, className }: InvoiceCardProps) {
       <div className="flex items-center justify-between pt-4 border-t border-border">
         <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
         <p className="amount-display text-2xl text-foreground">
-          {formatCurrency(invoice.total, invoice.currency)}
+          {formatCurrency(getInvoiceTotal(invoice), invoice.currency)}
         </p>
       </div>
     </div>
