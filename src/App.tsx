@@ -17,6 +17,7 @@ import Items from "./pages/Items";
 import Expenses from "./pages/Expenses";
 import CreditMemos from "./pages/CreditMemos";
 import TimeTracking from "./pages/TimeTracking";
+import TeamManagement from "./pages/TeamManagement";
 import Settings from "./pages/Settings";
 import TaxSettings from "./pages/settings/TaxSettings";
 import PaymentSettings from "./pages/settings/PaymentSettings";
@@ -51,6 +52,7 @@ function App() {
                   <Route path="/expenses" element={<Expenses />} />
                   <Route path="/credit-memos" element={<CreditMemos />} />
                   <Route path="/time-tracking" element={<TimeTracking />} />
+                  <Route path="/team" element={<TeamManagement />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/settings/tax" element={<TaxSettings />} />
                   <Route path="/settings/payments" element={<PaymentSettings />} />
