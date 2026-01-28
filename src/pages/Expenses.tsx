@@ -56,7 +56,7 @@ const Expenses = () => {
             <Receipt className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-[36px] font-semibold text-foreground">Expenses</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Expenses</h1>
             <p className="text-sm text-muted-foreground">Track your business expenses</p>
           </div>
         </div>
