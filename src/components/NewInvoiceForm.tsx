@@ -33,12 +33,6 @@ import { ClientSelector } from "./ClientSelector";
 import { NewClientForm } from "./NewClientForm";
 import { useToast } from "@/hooks/use-toast";
 
-// Extended line item that tracks source item
-interface ExtendedLineItem extends LineItem {
-  sourceItemId?: string;
-  unit?: string;
-}
-
 interface NewInvoiceFormProps {
   onBack: () => void;
   onSubmit: (data: InvoiceFormData) => void;
@@ -51,11 +45,16 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-const defaultLineItem = (): ExtendedLineItem => ({
+const defaultLineItem = (): LineItem => ({
   id: generateId(),
   description: "",
   quantity: 1,
   unitPrice: 0,
+  itemCode: "",
+  taxCode: "NONE",
+  discountType: "PERCENT",
+  discountValue: 0,
+  itemType: "parts",
 });
 
 export function NewInvoiceForm({ 
@@ -71,19 +70,24 @@ export function NewInvoiceForm({
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   // Initialize line items based on editing mode
-  const getInitialLineItems = (): ExtendedLineItem[] => {
+  const getInitialLineItems = (): LineItem[] => {
     if (editingInvoice) {
       return [{
         id: generateId(),
         description: editingInvoice.projectName || "Services",
         quantity: 1,
         unitPrice: editingInvoice.total,
+        itemCode: "",
+        taxCode: "NONE",
+        discountType: "PERCENT",
+        discountValue: 0,
+        itemType: "parts",
       }];
     }
     return [defaultLineItem()];
   };
 
-  const [lineItems, setLineItems] = useState<ExtendedLineItem[]>(getInitialLineItems);
+  const [lineItems, setLineItems] = useState<LineItem[]>(getInitialLineItems);
   const [taxRate, setTaxRate] = useState(editingInvoice ? 0 : 10);
 
   const form = useForm<InvoiceFormData>({
@@ -171,7 +175,7 @@ export function NewInvoiceForm({
   const handleUpdateLineItem = (
     index: number,
     field: keyof LineItem,
-    value: string | number
+    value: LineItem[keyof LineItem]
   ) => {
     const updated = lineItems.map((item, i) =>
       i === index ? { ...item, [field]: value } : item
@@ -190,13 +194,18 @@ export function NewInvoiceForm({
    * Future price changes to the catalog won't affect this line item
    */
   const handleAddFromCatalog = (item: Item) => {
-    const newItem: ExtendedLineItem = {
+    const newItem: LineItem = {
       id: generateId(),
       description: item.name,
       quantity: item.defaultQty,
       unitPrice: centsToDollars(item.unitPriceCents),
       sourceItemId: item.id,
       unit: item.unit,
+      itemCode: item.sku || "",
+      taxCode: item.taxCode || "NONE",
+      discountType: "PERCENT",
+      discountValue: 0,
+      itemType: "parts",
     };
     const updated = [...lineItems, newItem];
     setLineItems(updated);

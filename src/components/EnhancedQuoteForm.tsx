@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Save, Plus, Trash2, User, Camera, X } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Save, Plus, Trash2, User, Camera, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { Quote, QuoteDepositRequest } from "@/data/quotes";
@@ -14,12 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ClientSelector } from "./ClientSelector";
 import { NewClientForm } from "./NewClientForm";
 import { SmartItemInput } from "./SmartItemInput";
 import { QuickAddItemForm } from "./QuickAddItemForm";
 import { Label } from "@/components/ui/label";
 import { centsToDollars } from "@/lib/money-utils";
+import { TAX_RATES } from "@/lib/tax-utils";
 import {
   Popover,
   PopoverContent,
@@ -48,6 +50,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface QuoteLineItem {
   id: string;
@@ -55,6 +62,12 @@ interface QuoteLineItem {
   quantity: number;
   unitPrice: number;
   sourceItemId?: string;
+  itemCode?: string;
+  unit?: string;
+  taxCode?: "GST" | "GST_FREE" | "NONE";
+  discountType?: "PERCENT" | "AMOUNT";
+  discountValue?: number;
+  itemType?: "parts" | "labor";
 }
 
 const quoteFormSchema = z.object({
@@ -85,6 +98,11 @@ const defaultLineItem = (): QuoteLineItem => ({
   description: "",
   quantity: 1,
   unitPrice: 0,
+  itemCode: "",
+  taxCode: "NONE",
+  discountType: "PERCENT",
+  discountValue: 0,
+  itemType: "parts",
 });
 
 export function EnhancedQuoteForm({ 
@@ -109,6 +127,19 @@ export function EnhancedQuoteForm({
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [quickAddIndex, setQuickAddIndex] = useState<number | null>(null);
   const [quickAddName, setQuickAddName] = useState("");
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  const toggleRowExpanded = (index: number) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
 
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
@@ -176,7 +207,7 @@ export function EnhancedQuoteForm({
     }
   };
 
-  const handleUpdateLineItem = (index: number, field: keyof QuoteLineItem, value: string | number) => {
+  const handleUpdateLineItem = (index: number, field: keyof QuoteLineItem, value: QuoteLineItem[keyof QuoteLineItem]) => {
     const updated = lineItems.map((item, i) =>
       i === index ? { ...item, [field]: value } : item
     );
@@ -192,6 +223,9 @@ export function EnhancedQuoteForm({
             unitPrice: centsToDollars(item.unitPriceCents),
             quantity: item.defaultQty,
             sourceItemId: item.id,
+            itemCode: item.sku || "",
+            unit: item.unit,
+            taxCode: item.taxCode || "NONE",
           }
         : lineItem
     );
@@ -212,6 +246,9 @@ export function EnhancedQuoteForm({
             unitPrice: centsToDollars(item.unitPriceCents),
             quantity: item.defaultQty,
             sourceItemId: item.id,
+            itemCode: item.sku || "",
+            unit: item.unit,
+            taxCode: item.taxCode || "NONE",
           }
         : lineItem
     );
@@ -393,12 +430,46 @@ export function EnhancedQuoteForm({
                     </div>
                     <div className="p-4">
                       <div className="space-y-3">
+                        {/* Header */}
+                        <div className="hidden sm:grid sm:grid-cols-12 gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          <div className="col-span-2">Item Code</div>
+                          <div className="col-span-4">Description</div>
+                          <div className="col-span-1 text-center">Qty</div>
+                          <div className="col-span-2 text-right">Price</div>
+                          <div className="col-span-2 text-right">Total</div>
+                          <div className="col-span-1"></div>
+                        </div>
+
                         {lineItems.map((item, index) => {
                           const isQuickAddOpen = quickAddIndex === index;
+                          const isExpanded = expandedRows.has(index);
+                          
+                          // Calculate line total with tax and discount
+                          const baseTotal = item.quantity * item.unitPrice;
+                          const discountAmount = item.discountType === "PERCENT" 
+                            ? baseTotal * ((item.discountValue || 0) / 100)
+                            : (item.discountValue || 0);
+                          const netAmount = Math.max(0, baseTotal - discountAmount);
+                          const taxRate = TAX_RATES[item.taxCode || "NONE"];
+                          const taxAmount = netAmount * taxRate;
+                          const lineTotal = netAmount + taxAmount;
+                          
                           return (
-                            <div key={item.id} className="space-y-2">
-                              <div className="flex gap-3 items-start">
-                                <div className="flex-1">
+                            <div key={item.id} className="space-y-0">
+                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 p-3 rounded-t-lg bg-secondary/50 items-center">
+                                {/* Item Code */}
+                                <div className="sm:col-span-2">
+                                  <label className="text-xs text-muted-foreground sm:hidden mb-1 block">Item Code</label>
+                                  <Input
+                                    placeholder="SKU/Code"
+                                    value={item.itemCode || ""}
+                                    onChange={(e) => handleUpdateLineItem(index, "itemCode", e.target.value)}
+                                    className="bg-card text-sm"
+                                  />
+                                </div>
+                                {/* Description */}
+                                <div className="sm:col-span-4">
+                                  <label className="text-xs text-muted-foreground sm:hidden mb-1 block">Description</label>
                                   <SmartItemInput
                                     value={item.description}
                                     onChange={(value) => handleUpdateLineItem(index, "description", value)}
@@ -407,30 +478,181 @@ export function EnhancedQuoteForm({
                                     placeholder="Type item name or code..."
                                   />
                                 </div>
-                                <Input
-                                  type="number"
-                                  placeholder="Qty"
-                                  value={item.quantity}
-                                  onChange={(e) => handleUpdateLineItem(index, "quantity", Number(e.target.value))}
-                                  className="w-20"
-                                />
-                                <Input
-                                  type="number"
-                                  placeholder="Price"
-                                  value={item.unitPrice}
-                                  onChange={(e) => handleUpdateLineItem(index, "unitPrice", Number(e.target.value))}
-                                  className="w-28"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoveLineItem(index)}
-                                  disabled={lineItems.length === 1}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {/* Qty */}
+                                <div className="sm:col-span-1">
+                                  <label className="text-xs text-muted-foreground sm:hidden mb-1 block">Qty</label>
+                                  <Input
+                                    type="number"
+                                    placeholder="1"
+                                    value={item.quantity}
+                                    onChange={(e) => handleUpdateLineItem(index, "quantity", Number(e.target.value))}
+                                    className="bg-card text-center"
+                                  />
+                                </div>
+                                {/* Price */}
+                                <div className="sm:col-span-2">
+                                  <label className="text-xs text-muted-foreground sm:hidden mb-1 block">Price</label>
+                                  <Input
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={item.unitPrice}
+                                    onChange={(e) => handleUpdateLineItem(index, "unitPrice", Number(e.target.value))}
+                                    className="bg-card text-right"
+                                  />
+                                </div>
+                                {/* Total */}
+                                <div className="sm:col-span-2 text-right">
+                                  <label className="text-xs text-muted-foreground sm:hidden mb-1 block">Total</label>
+                                  <span className="font-medium">${lineTotal.toFixed(2)}</span>
+                                </div>
+                                {/* Delete */}
+                                <div className="sm:col-span-1 flex justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveLineItem(index)}
+                                    disabled={lineItems.length === 1}
+                                    className="h-8 w-8"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
+
+                              {/* GST, Parts/Labor, Discount - Collapsible */}
+                              <Collapsible open={isExpanded} onOpenChange={() => toggleRowExpanded(index)}>
+                                <CollapsibleTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="w-full flex items-center gap-1 px-3 py-1.5 text-xs text-primary hover:text-primary/80 bg-secondary/30 rounded-b-lg border-t border-border/50 transition-colors"
+                                  >
+                                    {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                    <span>GST, parts or labor, discount</span>
+                                  </button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="px-3 py-3 bg-secondary/20 rounded-b-lg border-t border-border/30 space-y-3">
+                                    {/* GST Row */}
+                                    <div className="flex items-center gap-4">
+                                      <div className="flex items-center gap-2">
+                                        <Checkbox
+                                          id={`gst-quote-${index}`}
+                                          checked={item.taxCode === "GST"}
+                                          onCheckedChange={(checked) => {
+                                            handleUpdateLineItem(index, "taxCode", checked ? "GST" : "NONE");
+                                          }}
+                                        />
+                                        <label htmlFor={`gst-quote-${index}`} className="text-sm cursor-pointer">GST</label>
+                                      </div>
+                                      <Select
+                                        value={item.taxCode === "GST" ? "10" : "0"}
+                                        onValueChange={(value) => {
+                                          handleUpdateLineItem(index, "taxCode", value === "10" ? "GST" : "NONE");
+                                        }}
+                                        disabled={item.taxCode !== "GST"}
+                                      >
+                                        <SelectTrigger className="w-20 h-8 text-xs">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="10">10%</SelectItem>
+                                          <SelectItem value="0">0%</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    {/* Parts or Labor Row */}
+                                    <div className="flex items-center gap-4">
+                                      <span className="text-sm text-muted-foreground w-24">Parts or labor</span>
+                                      <Select
+                                        value={item.itemType || "parts"}
+                                        onValueChange={(value) => {
+                                          handleUpdateLineItem(index, "itemType", value as "parts" | "labor");
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-24 h-8 text-xs">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="parts">Parts</SelectItem>
+                                          <SelectItem value="labor">Labor</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    {/* Discount Row */}
+                                    <div className="flex items-center gap-4">
+                                      <div className="flex items-center gap-2">
+                                        <Checkbox
+                                          id={`discount-quote-${index}`}
+                                          checked={(item.discountValue || 0) > 0}
+                                          onCheckedChange={(checked) => {
+                                            if (!checked) {
+                                              handleUpdateLineItem(index, "discountValue", 0);
+                                            }
+                                          }}
+                                        />
+                                        <label htmlFor={`discount-quote-${index}`} className="text-sm cursor-pointer">Discount</label>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          type="button"
+                                          variant={item.discountType === "PERCENT" ? "default" : "outline"}
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-xs"
+                                          onClick={() => handleUpdateLineItem(index, "discountType", "PERCENT")}
+                                        >
+                                          %
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant={item.discountType === "AMOUNT" ? "default" : "outline"}
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-xs"
+                                          onClick={() => handleUpdateLineItem(index, "discountType", "AMOUNT")}
+                                        >
+                                          $
+                                        </Button>
+                                      </div>
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        step={item.discountType === "PERCENT" ? 1 : 0.01}
+                                        max={item.discountType === "PERCENT" ? 100 : undefined}
+                                        placeholder="0"
+                                        value={item.discountValue || ""}
+                                        onChange={(e) => {
+                                          handleUpdateLineItem(index, "discountValue", parseFloat(e.target.value) || 0);
+                                        }}
+                                        className="w-20 h-8 text-xs text-right"
+                                      />
+                                      {item.discountType === "PERCENT" && (
+                                        <span className="text-xs text-muted-foreground">%</span>
+                                      )}
+                                    </div>
+
+                                    {/* Summary of adjustments */}
+                                    {(taxAmount > 0 || discountAmount > 0) && (
+                                      <div className="pt-2 border-t border-border/30 text-xs text-muted-foreground space-y-1">
+                                        {discountAmount > 0 && (
+                                          <div className="flex justify-between">
+                                            <span>Discount:</span>
+                                            <span className="text-destructive">-${discountAmount.toFixed(2)}</span>
+                                          </div>
+                                        )}
+                                        {taxAmount > 0 && (
+                                          <div className="flex justify-between">
+                                            <span>GST (10%):</span>
+                                            <span>${taxAmount.toFixed(2)}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+
                               {isQuickAddOpen && (
                                 <QuickAddItemForm
                                   initialName={quickAddName}
