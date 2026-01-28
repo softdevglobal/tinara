@@ -4,14 +4,14 @@ import { Client } from "@/data/clients";
 import { InvoiceFilters } from "./InvoiceFilters";
 import { InvoiceTable } from "./tables/InvoiceTable";
 import { InvoiceCard } from "./InvoiceCard";
-import { NewInvoiceForm } from "./NewInvoiceForm";
+import { DocumentCreationForm } from "./document/DocumentCreationForm";
 import { BulkActionsBar } from "./BulkActionsBar";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { generateInvoicePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
-import { InvoiceFormData } from "@/lib/invoice-schema";
 import { useApp } from "@/context/AppContext";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { Quote } from "@/data/quotes";
 
 type StatusFilter = "all" | "Opened" | "Paid" | "Overdue";
 type View = "list" | "detail" | "new" | "edit";
@@ -43,9 +43,9 @@ function sortInvoices(invoices: Invoice[], sortOption: InvoiceSortOption): Invoi
         if (!b.paidDate) return -1;
         return new Date(a.paidDate).getTime() - new Date(b.paidDate).getTime();
       case "amount-desc":
-        return b.total - a.total;
+        return (b.totals?.totalCents ?? 0) - (a.totals?.totalCents ?? 0);
       case "amount-asc":
-        return a.total - b.total;
+        return (a.totals?.totalCents ?? 0) - (b.totals?.totalCents ?? 0);
       default:
         return 0;
     }
@@ -186,112 +186,30 @@ export function InvoiceDashboard({
     setView("edit");
   };
 
-  const handleCreateInvoice = (data: InvoiceFormData) => {
-    const subtotal = data.lineItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
-    const taxAmount = subtotal * (data.taxRate / 100);
-    const total = subtotal + taxAmount;
-
-    // Convert to cents for storage
-    const subtotalCents = Math.round(subtotal * 100);
-    const taxCents = Math.round(taxAmount * 100);
-    const totalCents = Math.round(total * 100);
-
-    const newInvoice: Invoice = {
-      id: `inv_${Date.now()}`,
-      number: `A${Date.now().toString().slice(-8)}`,
-      clientName: data.clientName,
-      projectName: data.projectName || "",
-      date: data.issueDate.toISOString().split("T")[0],
-      dueDate: data.dueDate.toISOString().split("T")[0],
-      dueDaysOverdue: 0,
-      dueLabel: `Due in ${Math.ceil((data.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days`,
-      status: "Opened",
-      currency: "AUD",
-      lineItems: [], // TODO: Convert to DocumentLineItem once form is migrated
-      totals: {
-        subtotalCents,
-        discountCents: 0,
-        taxCents,
-        totalCents,
-      },
-      total, // Keep for backwards compat
-    };
-
-    onUpdateInvoices((prev) => [newInvoice, ...prev]);
+  const handleCreateInvoice = (doc: Invoice | Quote) => {
+    const invoice = doc as Invoice;
+    onUpdateInvoices((prev) => [invoice, ...prev]);
     setView("list");
     onCloseNewForm?.();
     toast({
       title: "Invoice created",
-      description: `Invoice #${newInvoice.number} has been created.`,
+      description: `Invoice #${invoice.number} has been created.`,
     });
   };
 
-  const handleUpdateInvoice = (data: InvoiceFormData) => {
+  const handleUpdateInvoice = (doc: Invoice | Quote) => {
     if (!editingInvoice) return;
-
-    const subtotal = data.lineItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
-    const taxAmount = subtotal * (data.taxRate / 100);
-    const total = subtotal + taxAmount;
-
-    // Convert to cents for storage
-    const subtotalCents = Math.round(subtotal * 100);
-    const taxCents = Math.round(taxAmount * 100);
-    const totalCents = Math.round(total * 100);
-
-    const dueDate = data.dueDate;
-    const now = new Date();
-    const daysDiff = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const invoice = doc as Invoice;
     
-    let status: "Opened" | "Paid" | "Overdue" = editingInvoice.status;
-    let dueDaysOverdue = 0;
-    let dueLabel = "";
-
-    if (status !== "Paid") {
-      if (daysDiff < 0) {
-        status = "Overdue";
-        dueDaysOverdue = Math.abs(daysDiff);
-        dueLabel = `${dueDaysOverdue} day${dueDaysOverdue > 1 ? "s" : ""} ago`;
-      } else {
-        status = "Opened";
-        dueLabel = `Due in ${daysDiff} days`;
-      }
-    }
-
     onUpdateInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === editingInvoice.id
-          ? {
-              ...inv,
-              clientName: data.clientName,
-              projectName: data.projectName || "",
-              date: data.issueDate.toISOString().split("T")[0],
-              dueDate: data.dueDate.toISOString().split("T")[0],
-              dueDaysOverdue,
-              dueLabel,
-              status,
-              totals: {
-                subtotalCents,
-                discountCents: 0,
-                taxCents,
-                totalCents,
-              },
-              total, // Keep for backwards compat
-            }
-          : inv
-      )
+      prev.map((inv) => inv.id === invoice.id ? invoice : inv)
     );
     
     setEditingInvoice(null);
     setView("list");
     toast({
       title: "Invoice updated",
-      description: `Invoice #${editingInvoice.number} has been updated.`,
+      description: `Invoice #${invoice.number} has been updated.`,
     });
   };
 
@@ -304,8 +222,9 @@ export function InvoiceDashboard({
 
   if (view === "new") {
     return (
-      <NewInvoiceForm 
-        onBack={handleBackToList} 
+      <DocumentCreationForm
+        type="invoice"
+        onBack={handleBackToList}
         onSubmit={handleCreateInvoice}
         clients={clients}
         onAddClient={onAddClient}
@@ -315,10 +234,11 @@ export function InvoiceDashboard({
 
   if (view === "edit" && editingInvoice) {
     return (
-      <NewInvoiceForm
+      <DocumentCreationForm
+        type="invoice"
         onBack={handleBackToList}
         onSubmit={handleUpdateInvoice}
-        editingInvoice={editingInvoice}
+        editingDocument={editingInvoice}
         clients={clients}
         onAddClient={onAddClient}
       />
