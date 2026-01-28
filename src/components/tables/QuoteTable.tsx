@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import { MoreHorizontal, ArrowUpDown, FileIcon } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, FileIcon, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Quote, QuoteSortOption } from "@/data/quotes";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,6 +29,7 @@ interface QuoteTableProps {
   onDelete?: (quote: Quote) => void;
   onConvertToInvoice?: (quote: Quote) => void;
   onDownloadPdf?: (quote: Quote) => void;
+  onViewInvoice?: (invoiceId: string) => void;
   sortOption: QuoteSortOption;
   onSortChange: (option: QuoteSortOption) => void;
 }
@@ -40,6 +42,7 @@ export function QuoteTable({
   onDelete,
   onConvertToInvoice,
   onDownloadPdf,
+  onViewInvoice,
   sortOption,
   onSortChange,
 }: QuoteTableProps) {
@@ -70,7 +73,8 @@ export function QuoteTable({
     }).format(amount);
   };
 
-  const getStatusBadge = (status: Quote["status"]) => {
+  const getStatusBadge = (quote: Quote) => {
+    const status = quote.status;
     const styles: Record<Quote["status"], string> = {
       Draft: "bg-muted text-muted-foreground",
       Sent: "bg-amber-500 text-white",
@@ -84,15 +88,31 @@ export function QuoteTable({
     };
     
     const showIcon = status === "Unsent" || status === "Approved";
+    const isConverted = status === "Converted" && quote.convertedToInvoiceId;
     
     return (
-      <span className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
-        styles[status]
-      )}>
-        {status}
-        {showIcon && <FileIcon className="h-3 w-3" />}
-      </span>
+      <div className="flex items-center gap-2">
+        <span className={cn(
+          "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
+          styles[status]
+        )}>
+          {status}
+          {showIcon && <FileIcon className="h-3 w-3" />}
+        </span>
+        {isConverted && (
+          <Link
+            to="/invoices"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewInvoice?.(quote.convertedToInvoiceId!);
+            }}
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            View Invoice
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+        )}
+      </div>
     );
   };
 
@@ -178,7 +198,7 @@ export function QuoteTable({
                 <TableCell className="text-muted-foreground">
                   {format(new Date(quote.date), "MMM d, yyyy")}
                 </TableCell>
-                <TableCell>{getStatusBadge(quote.status)}</TableCell>
+                <TableCell>{getStatusBadge(quote)}</TableCell>
                 <TableCell className="text-right font-medium">
                   {formatCurrency(quote.total, quote.currency)}
                 </TableCell>
