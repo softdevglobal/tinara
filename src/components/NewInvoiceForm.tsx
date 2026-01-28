@@ -204,6 +204,20 @@ export function NewInvoiceForm({
   };
 
   const handleFormSubmit = (data: InvoiceFormData) => {
+    // Validate line items before submission
+    const invalidItems = lineItems.filter(
+      (item) => !item.description.trim() || item.quantity <= 0
+    );
+
+    if (invalidItems.length > 0) {
+      toast({
+        title: "Invalid line items",
+        description: "Please fill in all item descriptions and ensure quantities are greater than 0.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const subtotal = lineItems.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
       0
@@ -213,6 +227,15 @@ export function NewInvoiceForm({
       toast({
         title: "Invalid invoice",
         description: "Please add at least one item with a price.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedClient) {
+      toast({
+        title: "Client required",
+        description: "Please select or create a client for this invoice.",
         variant: "destructive",
       });
       return;

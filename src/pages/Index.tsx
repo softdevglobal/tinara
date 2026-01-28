@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, Plus, Download } from "lucide-react";
 import { InvoiceDashboard } from "@/components/InvoiceDashboard";
 import { InvoiceStats } from "@/components/InvoiceStats";
@@ -19,6 +19,13 @@ const Index = () => {
   const [view, setView] = useState<View>("home");
   const { invoices, clients, setInvoices, addClient, quotes } = useApp();
   const { toast } = useToast();
+
+  // Sync showNewForm with URL parameter changes (SPA navigation)
+  useEffect(() => {
+    if (showNewFromUrl) {
+      setShowNewForm(true);
+    }
+  }, [showNewFromUrl]);
 
   const handleExportInvoices = () => {
     exportInvoicesToCSV(invoices);

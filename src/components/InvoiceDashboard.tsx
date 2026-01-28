@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Invoice, InvoiceSortOption } from "@/data/invoices";
 import { Client } from "@/data/clients";
 import { InvoiceFilters } from "./InvoiceFilters";
@@ -89,10 +89,12 @@ export function InvoiceDashboard({
     view === "list"
   );
 
-  // Sync with prop
-  if (showNewForm && view !== "new") {
-    setView("new");
-  }
+  // Sync with prop - use useEffect to avoid setState during render
+  useEffect(() => {
+    if (showNewForm && view !== "new") {
+      setView("new");
+    }
+  }, [showNewForm]);
 
   const counts = useMemo(
     () => ({

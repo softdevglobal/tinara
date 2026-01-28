@@ -26,6 +26,7 @@ interface LineItemsEditorProps {
   onRemove: (index: number) => void;
   onUpdate: (index: number, field: keyof LineItem, value: string | number) => void;
   onAddFromCatalog?: (item: Item) => void;
+  showValidationErrors?: boolean;
 }
 
 function formatCurrency(amount: number): string {
@@ -42,6 +43,7 @@ export function LineItemsEditor({
   onRemove,
   onUpdate,
   onAddFromCatalog,
+  showValidationErrors = false,
 }: LineItemsEditorProps) {
   
   const handleCatalogSelect = (item: Item) => {
@@ -91,6 +93,8 @@ export function LineItemsEditor({
           const lineTotal = item.quantity * item.unitPrice;
           const extendedItem = item as ExtendedLineItem;
           const isFromCatalog = !!extendedItem.sourceItemId;
+          const hasDescriptionError = showValidationErrors && !item.description.trim();
+          const hasQuantityError = showValidationErrors && item.quantity <= 0;
           
           return (
             <div
@@ -106,7 +110,7 @@ export function LineItemsEditor({
                     placeholder="Item description"
                     value={item.description}
                     onChange={(e) => onUpdate(index, "description", e.target.value)}
-                    className="bg-card pr-8"
+                    className={`bg-card pr-8 ${hasDescriptionError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                   />
                   {isFromCatalog && (
                     <TooltipProvider>
@@ -138,7 +142,7 @@ export function LineItemsEditor({
                   onChange={(e) =>
                     onUpdate(index, "quantity", parseInt(e.target.value) || 0)
                   }
-                  className="bg-card text-center"
+                  className={`bg-card text-center ${hasQuantityError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 />
               </div>
               <div className="sm:col-span-2">
