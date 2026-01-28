@@ -19,24 +19,27 @@ const Clients = () => {
 
   return (
     <AppLayout>
+      {/* Decorative accent bar */}
+      <div className="jp-accent-bar mb-8" />
+      
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Users className="h-4 w-4 text-primary-foreground" />
+      <div className="flex items-center justify-between mb-10">
+        <div className="flex items-center gap-5">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-sakura shadow-lg">
+            <Users className="h-8 w-8 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Clients</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-title text-foreground">Clients</h1>
+            <p className="text-lg text-muted-foreground">
               {clients.length} client{clients.length !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
         <button
           onClick={handleExportClients}
-          className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border text-sm font-medium hover:bg-secondary transition-colors"
+          className="flex items-center gap-3 h-14 px-6 rounded-2xl border-2 border-border text-lg font-medium hover:bg-secondary hover:border-primary/30 transition-all"
         >
-          <Download className="h-4 w-4" />
+          <Download className="h-5 w-5" />
           <span className="hidden sm:inline">Export</span>
         </button>
       </div>

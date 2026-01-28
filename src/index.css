@@ -2,81 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Japanese-inspired clean palette */
+    --background: 45 30% 97%;
+    --foreground: 220 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 220 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 220 25% 15%;
 
-    --primary: 222 47% 11%;
-    --primary-foreground: 210 40% 98%;
+    /* Sakura pink primary */
+    --primary: 350 75% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* Soft bamboo secondary */
+    --secondary: 150 25% 92%;
+    --secondary-foreground: 220 25% 15%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 45 20% 94%;
+    --muted-foreground: 220 15% 45%;
 
-    --accent: 160 84% 39%;
+    /* Teal accent like traditional Japanese ceramics */
+    --accent: 175 55% 45%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    /* Vermillion red for warnings */
+    --destructive: 10 80% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 25 95% 53%;
+    --warning: 35 95% 55%;
     --warning-foreground: 0 0% 100%;
 
-    --success: 142 76% 36%;
+    /* Matcha green for success */
+    --success: 145 50% 42%;
     --success-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 222 47% 11%;
+    --border: 45 15% 88%;
+    --input: 45 15% 88%;
+    --ring: 350 75% 60%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
+    /* Japanese-inspired accents */
+    --sakura: 350 75% 70%;
+    --indigo: 235 55% 55%;
+    --gold: 45 85% 55%;
+    --ocean: 200 70% 50%;
+    
     /* Custom tokens */
-    --invoice-badge-opened: 220 14% 96%;
-    --invoice-badge-opened-text: 222 47% 11%;
-    --invoice-overdue: 0 72% 51%;
-    --invoice-overdue-bg: 0 72% 97%;
+    --invoice-badge-opened: 235 55% 95%;
+    --invoice-badge-opened-text: 235 55% 45%;
+    --invoice-overdue: 10 80% 50%;
+    --invoice-overdue-bg: 10 80% 97%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    --background: 220 25% 10%;
+    --foreground: 45 20% 95%;
 
-    --card: 222 47% 14%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 25% 14%;
+    --card-foreground: 45 20% 95%;
 
-    --popover: 222 47% 14%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 25% 14%;
+    --popover-foreground: 45 20% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 350 70% 65%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 20% 20%;
+    --secondary-foreground: 45 20% 95%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 20% 20%;
+    --muted-foreground: 45 15% 65%;
 
-    --accent: 160 84% 39%;
+    --accent: 175 50% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 10 70% 45%;
+    --destructive-foreground: 45 20% 95%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 212 27% 84%;
+    --border: 220 20% 22%;
+    --input: 220 20% 22%;
+    --ring: 350 70% 65%;
+    
+    --sakura: 350 65% 60%;
+    --indigo: 235 50% 60%;
+    --gold: 45 80% 60%;
+    --ocean: 200 65% 55%;
   }
 }
 
@@ -87,50 +104,107 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Noto Sans JP', system-ui, sans-serif;
+    font-size: 1rem;
   }
 
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+  
+  /* Large text sizing */
+  .text-body {
+    font-size: 1.125rem;
+    line-height: 1.7;
+  }
+  
+  .text-title {
+    font-size: 2.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  
+  .text-heading {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
 }
 
 @layer components {
   .invoice-card {
-    @apply bg-card rounded-xl border border-border shadow-sm;
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+    @apply bg-card rounded-2xl border-2 border-border;
+    box-shadow: 0 4px 20px -4px hsl(var(--sakura) / 0.1), 
+                0 8px 32px -8px hsl(var(--indigo) / 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .invoice-card:hover {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    border-color: hsl(var(--sakura) / 0.4);
+    box-shadow: 0 8px 32px -4px hsl(var(--sakura) / 0.15), 
+                0 16px 48px -8px hsl(var(--indigo) / 0.12);
+    transform: translateY(-2px);
   }
 
   .status-badge {
-    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold;
   }
 
   .status-badge-opened {
-    @apply bg-secondary text-foreground;
+    background: linear-gradient(135deg, hsl(var(--indigo) / 0.15), hsl(var(--ocean) / 0.1));
+    color: hsl(var(--indigo));
   }
 
   .status-badge-overdue {
-    background-color: hsl(var(--invoice-overdue-bg));
+    background: linear-gradient(135deg, hsl(var(--invoice-overdue-bg)), hsl(var(--destructive) / 0.1));
     color: hsl(var(--invoice-overdue));
   }
 
   .amount-display {
-    @apply font-semibold tracking-tight;
+    @apply font-bold tracking-tight;
+    background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--indigo)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   .label-text {
-    @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
+    @apply text-sm font-semibold uppercase tracking-wider text-muted-foreground;
   }
 
   .value-text {
-    @apply text-sm font-medium text-foreground;
+    @apply text-lg font-medium text-foreground;
   }
 
   .overdue-indicator {
-    @apply text-destructive font-medium;
+    @apply text-destructive font-semibold;
+  }
+  
+  /* Japanese-inspired decorative elements */
+  .jp-accent-bar {
+    height: 4px;
+    background: linear-gradient(90deg, 
+      hsl(var(--sakura)) 0%, 
+      hsl(var(--gold)) 50%, 
+      hsl(var(--ocean)) 100%);
+    border-radius: 2px;
+  }
+  
+  .jp-card-accent {
+    position: relative;
+  }
+  
+  .jp-card-accent::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, 
+      hsl(var(--sakura)) 0%, 
+      hsl(var(--indigo)) 100%);
+    border-radius: 1rem 1rem 0 0;
   }
 }

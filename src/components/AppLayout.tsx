@@ -53,10 +53,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     <TooltipProvider>
       <div className="min-h-screen bg-background">
         {/* Header with Navigation */}
-        <header className="border-b border-border bg-card sticky top-0 z-10">
-          <div className="container max-w-4xl py-3">
+        <header className="border-b-2 border-border bg-card sticky top-0 z-10 shadow-sm">
+          <div className="container max-w-5xl py-4">
             <nav className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.href;
                   return (
@@ -64,13 +64,13 @@ export function AppLayout({ children }: AppLayoutProps) {
                       key={item.href}
                       to={item.href}
                       className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                        "flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-all",
                         isActive
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-gradient-to-r from-primary to-sakura text-primary-foreground shadow-md"
                           : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className="h-5 w-5" />
                       {item.label}
                     </Link>
                   );
@@ -82,14 +82,14 @@ export function AppLayout({ children }: AppLayoutProps) {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowShortcuts(true)}
-                    className="h-9 w-9"
+                    className="h-12 w-12 rounded-xl"
                   >
-                    <Keyboard className="h-4 w-4" />
+                    <Keyboard className="h-5 w-5" />
                     <span className="sr-only">Keyboard shortcuts</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Keyboard shortcuts (?)</p>
+                  <p className="text-base">Keyboard shortcuts (?)</p>
                 </TooltipContent>
               </Tooltip>
             </nav>
@@ -97,7 +97,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Main Content */}
-        <main className="container max-w-4xl py-6">{children}</main>
+        <main className="container max-w-5xl py-10">{children}</main>
 
         {/* Keyboard Shortcuts Modal */}
         <KeyboardShortcutsModal
