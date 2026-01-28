@@ -25,6 +25,7 @@ import SecuritySettings from "./pages/settings/SecuritySettings";
 import TeamSettings from "./pages/settings/TeamSettings";
 import ExportSettings from "./pages/settings/ExportSettings";
 import NotFound from "./pages/NotFound";
+import OnboardingRouter from "./pages/onboarding/OnboardingRouter";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,10 @@ function App() {
                   <Route path="/settings/security" element={<SecuritySettings />} />
                   <Route path="/settings/team" element={<TeamSettings />} />
                   <Route path="/settings/export" element={<ExportSettings />} />
+                  
+                  {/* Onboarding Routes - wrapped with its own router */}
+                  <Route path="/onboarding/*" element={<OnboardingRouter />} />
+
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
