@@ -177,10 +177,12 @@ export function QuoteTable({
               <TableRow
                 key={quote.id}
                 className={cn(
+                  "cursor-pointer hover:bg-muted/30",
                   selectedIds.includes(quote.id) && "bg-muted/50"
                 )}
+                onClick={() => onEdit?.(quote)}
               >
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedIds.includes(quote.id)}
                     onCheckedChange={() => handleSelectOne(quote.id)}
@@ -202,7 +204,7 @@ export function QuoteTable({
                 <TableCell className="text-right font-medium">
                   {formatCurrency(quote.total, quote.currency)}
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">

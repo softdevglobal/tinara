@@ -160,10 +160,12 @@ export function InvoiceTable({
               <TableRow
                 key={invoice.id}
                 className={cn(
+                  "cursor-pointer hover:bg-muted/30",
                   selectedIds.includes(invoice.id) && "bg-muted/50"
                 )}
+                onClick={() => onEdit?.(invoice)}
               >
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedIds.includes(invoice.id)}
                     onCheckedChange={() => handleSelectOne(invoice.id)}
@@ -235,7 +237,7 @@ export function InvoiceTable({
                 <TableCell className="text-right font-medium">
                   {formatCurrency(invoice.total, invoice.currency)}
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
