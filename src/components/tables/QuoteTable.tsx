@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { format } from "date-fns";
-import { MoreHorizontal, ArrowUpDown } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, FileIcon } from "lucide-react";
 import { Quote, QuoteSortOption } from "@/data/quotes";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -73,15 +72,25 @@ export function QuoteTable({
 
   const getStatusBadge = (status: Quote["status"]) => {
     const styles: Record<Quote["status"], string> = {
-      Draft: "status-badge-draft",
-      Sent: "status-badge-opened",
-      Accepted: "status-badge-paid",
-      Expired: "status-badge-overdue",
-      Converted: "status-badge-paid",
+      Draft: "bg-muted text-muted-foreground",
+      Sent: "bg-amber-500 text-white",
+      Accepted: "bg-green-500 text-white",
+      Expired: "bg-destructive text-destructive-foreground",
+      Converted: "bg-green-500 text-white",
+      Unsent: "bg-muted text-muted-foreground border",
+      Opened: "bg-blue-500 text-white",
+      Approved: "bg-muted text-foreground",
     };
+    
+    const showIcon = status === "Unsent" || status === "Approved";
+    
     return (
-      <span className={cn("status-badge", styles[status])}>
+      <span className={cn(
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
+        styles[status]
+      )}>
         {status}
+        {showIcon && <FileIcon className="h-3 w-3" />}
       </span>
     );
   };
@@ -112,6 +121,7 @@ export function QuoteTable({
             </TableHead>
             <TableHead>Number</TableHead>
             <TableHead>Client</TableHead>
+            <TableHead>Project name</TableHead>
             <TableHead>
               <button
                 onClick={() => toggleSort("date")}
@@ -121,7 +131,6 @@ export function QuoteTable({
                 <ArrowUpDown className="h-3 w-3" />
               </button>
             </TableHead>
-            <TableHead>Valid Until</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">
               <button
@@ -160,27 +169,13 @@ export function QuoteTable({
                   {quote.number}
                 </TableCell>
                 <TableCell>
-                  <div>
-                    <p className="font-medium">{quote.clientName}</p>
-                    {quote.projectName && (
-                      <p className="text-sm text-muted-foreground">
-                        {quote.projectName}
-                      </p>
-                    )}
-                  </div>
+                  <p className="font-medium">{quote.clientName}</p>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {quote.projectName || "-"}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {format(new Date(quote.date), "MMM d, yyyy")}
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className={cn(quote.status === "Expired" && "text-destructive")}>
-                      {format(new Date(quote.validUntil), "MMM d, yyyy")}
-                    </p>
-                    {quote.validLabel && quote.status !== "Accepted" && quote.status !== "Converted" && (
-                      <p className="text-xs text-muted-foreground">{quote.validLabel}</p>
-                    )}
-                  </div>
                 </TableCell>
                 <TableCell>{getStatusBadge(quote.status)}</TableCell>
                 <TableCell className="text-right font-medium">
@@ -200,7 +195,7 @@ export function QuoteTable({
                       <DropdownMenuItem onClick={() => onDownloadPdf?.(quote)}>
                         Download PDF
                       </DropdownMenuItem>
-                      {(quote.status === "Sent" || quote.status === "Accepted") && (
+                      {(quote.status === "Sent" || quote.status === "Accepted" || quote.status === "Approved") && (
                         <DropdownMenuItem onClick={() => onConvertToInvoice?.(quote)}>
                           Convert to Invoice
                         </DropdownMenuItem>

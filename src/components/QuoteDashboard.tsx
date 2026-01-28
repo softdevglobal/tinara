@@ -1,24 +1,22 @@
 import { useState, useMemo, useRef } from "react";
 import { Quote, QuoteSortOption } from "@/data/quotes";
 import { Client } from "@/data/clients";
-import { QuoteFilters } from "./QuoteFilters";
+import { Project } from "@/data/projects";
 import { QuoteTable } from "./tables/QuoteTable";
-import { QuoteCard } from "./QuoteCard";
-import { NewQuoteForm } from "./NewQuoteForm";
-import { QuoteBulkActionsBar } from "./QuoteBulkActionsBar";
-import { ArrowLeft, FileText } from "lucide-react";
+import { EnhancedQuoteForm } from "./EnhancedQuoteForm";
+import { ArrowLeft } from "lucide-react";
 import { generateQuotePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
-import { QuoteFormData } from "@/lib/quote-schema";
 import { useApp } from "@/context/AppContext";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
-type StatusFilter = "all" | "Draft" | "Sent" | "Accepted" | "Expired" | "Converted";
-type View = "list" | "detail" | "new" | "edit";
+type View = "list" | "new" | "edit";
 
 interface QuoteDashboardProps {
   quotes: Quote[];
   clients: Client[];
+  projects: Project[];
   onUpdateQuotes: React.Dispatch<React.SetStateAction<Quote[]>>;
   onAddClient: (client: Client) => void;
   onConvertToInvoice: (quote: Quote) => void;
@@ -56,6 +54,7 @@ function sortQuotes(quotes: Quote[], sortOption: QuoteSortOption): Quote[] {
 export function QuoteDashboard({
   quotes,
   clients,
+  projects,
   onUpdateQuotes,
   onAddClient,
   onConvertToInvoice,
@@ -63,50 +62,17 @@ export function QuoteDashboard({
   onCloseNewForm,
 }: QuoteDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortOption, setSortOption] = useState<QuoteSortOption>("date-desc");
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
-
-  // Keyboard shortcuts
-  useKeyboardShortcuts(
-    {
-      onNewItem: () => {
-        if (view === "list") {
-          setView("new");
-        }
-      },
-      onToggleSelectMode: () => {},
-      onFocusSearch: () => {
-        if (view === "list") {
-          searchInputRef.current?.focus();
-        }
-      },
-    },
-    view === "list"
-  );
 
   // Sync with prop
   if (showNewForm && view !== "new") {
     setView("new");
   }
-
-  const counts = useMemo(
-    () => ({
-      all: quotes.length,
-      Draft: quotes.filter((q) => q.status === "Draft").length,
-      Sent: quotes.filter((q) => q.status === "Sent").length,
-      Accepted: quotes.filter((q) => q.status === "Accepted").length,
-      Expired: quotes.filter((q) => q.status === "Expired").length,
-      Converted: quotes.filter((q) => q.status === "Converted").length,
-    }),
-    [quotes]
-  );
 
   const filteredQuotes = useMemo(() => {
     const filtered = quotes.filter((quote) => {
@@ -116,13 +82,10 @@ export function QuoteDashboard({
         quote.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         quote.projectName.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" || quote.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
     return sortQuotes(filtered, sortOption);
-  }, [quotes, searchQuery, statusFilter, sortOption]);
+  }, [quotes, searchQuery, sortOption]);
 
   const handleDownloadPdf = (quote: Quote) => {
     generateQuotePdf(quote, brandingSettings);
@@ -141,104 +104,46 @@ export function QuoteDashboard({
     });
   };
 
-  const handleBulkDelete = () => {
-    const count = selectedIds.length;
-    onUpdateQuotes((prev) => prev.filter((q) => !selectedIds.includes(q.id)));
-    setSelectedIds([]);
-    toast({
-      title: "Quotes deleted",
-      description: `${count} quotes have been removed.`,
-    });
-  };
-
   const handleEdit = (quote: Quote) => {
     setEditingQuote(quote);
     setView("edit");
   };
 
-  const handleCreateQuote = (data: QuoteFormData) => {
-    const subtotal = data.lineItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
-    const taxAmount = subtotal * (data.taxRate / 100);
-    const total = subtotal + taxAmount;
-
-    const validDays = Math.ceil((data.validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-
-    const newQuote: Quote = {
-      id: `quote_${Date.now()}`,
-      number: `Q${Date.now().toString().slice(-8)}`,
-      clientName: data.clientName,
-      projectName: data.projectName || "",
-      date: data.issueDate.toISOString().split("T")[0],
-      validUntil: data.validUntil.toISOString().split("T")[0],
-      validDaysRemaining: validDays,
-      validLabel: validDays > 0 ? `Valid for ${validDays} days` : "Expired",
-      status: "Draft",
-      total: total,
-      currency: "AUD",
-    };
-
-    onUpdateQuotes((prev) => [newQuote, ...prev]);
+  const handleCreateQuote = (quote: Quote) => {
+    onUpdateQuotes((prev) => [quote, ...prev]);
     setView("list");
     onCloseNewForm?.();
     toast({
-      title: "Quote created",
-      description: `Quote #${newQuote.number} has been created.`,
+      title: "Estimate created",
+      description: `Estimate #${quote.number} has been created.`,
     });
   };
 
-  const handleUpdateQuote = (data: QuoteFormData) => {
-    if (!editingQuote) return;
-
-    const subtotal = data.lineItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
-    const taxAmount = subtotal * (data.taxRate / 100);
-    const total = subtotal + taxAmount;
-
-    const validDays = Math.ceil((data.validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-
+  const handleUpdateQuote = (updatedQuote: Quote) => {
     onUpdateQuotes((prev) =>
-      prev.map((q) =>
-        q.id === editingQuote.id
-          ? {
-              ...q,
-              clientName: data.clientName,
-              projectName: data.projectName || "",
-              date: data.issueDate.toISOString().split("T")[0],
-              validUntil: data.validUntil.toISOString().split("T")[0],
-              validDaysRemaining: validDays,
-              validLabel: validDays > 0 ? `Valid for ${validDays} days` : "Expired",
-              total,
-            }
-          : q
-      )
+      prev.map((q) => q.id === updatedQuote.id ? updatedQuote : q)
     );
-    
     setEditingQuote(null);
     setView("list");
     toast({
-      title: "Quote updated",
-      description: `Quote #${editingQuote.number} has been updated.`,
+      title: "Estimate updated",
+      description: `Estimate #${updatedQuote.number} has been updated.`,
     });
   };
 
   const handleBackToList = () => {
     setView("list");
-    setSelectedQuote(null);
     setEditingQuote(null);
     onCloseNewForm?.();
   };
 
   if (view === "new") {
     return (
-      <NewQuoteForm 
+      <EnhancedQuoteForm 
         onBack={handleBackToList} 
         onSubmit={handleCreateQuote}
         clients={clients}
+        projects={projects}
         onAddClient={onAddClient}
       />
     );
@@ -246,65 +151,31 @@ export function QuoteDashboard({
 
   if (view === "edit" && editingQuote) {
     return (
-      <NewQuoteForm
+      <EnhancedQuoteForm
         onBack={handleBackToList}
         onSubmit={handleUpdateQuote}
         editingQuote={editingQuote}
         clients={clients}
+        projects={projects}
         onAddClient={onAddClient}
       />
     );
   }
 
-  if (view === "detail" && selectedQuote) {
-    const currentQuote = quotes.find((q) => q.id === selectedQuote.id);
-    if (!currentQuote) {
-      setView("list");
-      setSelectedQuote(null);
-      return null;
-    }
-
-    return (
-      <div className="animate-fade-in">
-        <button
-          onClick={handleBackToList}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to quotes
-        </button>
-        <div className="max-w-md">
-          <QuoteCard quote={currentQuote} />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <QuoteFilters
-        ref={searchInputRef}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
-        sortOption={sortOption}
-        onSortChange={setSortOption}
-        counts={counts}
-        isSelectMode={selectedIds.length > 0}
-        onToggleSelectMode={() => setSelectedIds([])}
-      />
-
-      {selectedIds.length > 0 && (
-        <QuoteBulkActionsBar
-          selectedCount={selectedIds.length}
-          totalCount={filteredQuotes.length}
-          onSelectAll={() => setSelectedIds(filteredQuotes.map((q) => q.id))}
-          onAccept={() => {}}
-          onDelete={handleBulkDelete}
-          onCancel={() => setSelectedIds([])}
-        />
-      )}
+      {/* Search */}
+      <div className="flex justify-end">
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search estimates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       <QuoteTable
         quotes={filteredQuotes}
