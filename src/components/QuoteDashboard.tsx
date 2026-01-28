@@ -1,9 +1,8 @@
 import { useState, useMemo, useRef } from "react";
 import { Quote, QuoteSortOption } from "@/data/quotes";
-import { Invoice } from "@/data/invoices";
 import { Client } from "@/data/clients";
 import { QuoteFilters } from "./QuoteFilters";
-import { QuoteListItem } from "./QuoteListItem";
+import { QuoteTable } from "./tables/QuoteTable";
 import { QuoteCard } from "./QuoteCard";
 import { NewQuoteForm } from "./NewQuoteForm";
 import { QuoteBulkActionsBar } from "./QuoteBulkActionsBar";
@@ -69,8 +68,7 @@ export function QuoteDashboard({
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
@@ -83,14 +81,7 @@ export function QuoteDashboard({
           setView("new");
         }
       },
-      onToggleSelectMode: () => {
-        if (view === "list") {
-          setIsSelectMode((prev) => {
-            if (prev) setSelectedIds(new Set());
-            return !prev;
-          });
-        }
-      },
+      onToggleSelectMode: () => {},
       onFocusSearch: () => {
         if (view === "list") {
           searchInputRef.current?.focus();
@@ -133,35 +124,6 @@ export function QuoteDashboard({
     return sortQuotes(filtered, sortOption);
   }, [quotes, searchQuery, statusFilter, sortOption]);
 
-  const handleSend = (quote: Quote) => {
-    onUpdateQuotes((prev) =>
-      prev.map((q) =>
-        q.id === quote.id
-          ? { ...q, status: "Sent" as const }
-          : q
-      )
-    );
-    toast({
-      title: "Quote sent",
-      description: `Quote #${quote.number} has been marked as sent.`,
-    });
-  };
-
-  const handleAccept = (id: string) => {
-    const acceptedDate = new Date().toISOString().split("T")[0];
-    onUpdateQuotes((prev) =>
-      prev.map((q) =>
-        q.id === id
-          ? { ...q, status: "Accepted" as const, acceptedDate }
-          : q
-      )
-    );
-    toast({
-      title: "Quote accepted",
-      description: "The quote has been marked as accepted.",
-    });
-  };
-
   const handleDownloadPdf = (quote: Quote) => {
     generateQuotePdf(quote, brandingSettings);
     toast({
@@ -170,71 +132,23 @@ export function QuoteDashboard({
     });
   };
 
-  const handleDelete = (id: string) => {
-    onUpdateQuotes((prev) => prev.filter((q) => q.id !== id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+  const handleDelete = (quote: Quote) => {
+    onUpdateQuotes((prev) => prev.filter((q) => q.id !== quote.id));
+    setSelectedIds((prev) => prev.filter((id) => id !== quote.id));
     toast({
       title: "Quote deleted",
       description: "The quote has been removed.",
     });
   };
 
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedIds.size === filteredQuotes.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredQuotes.map((q) => q.id)));
-    }
-  };
-
-  const handleBulkAccept = () => {
-    const acceptedDate = new Date().toISOString().split("T")[0];
-    onUpdateQuotes((prev) =>
-      prev.map((q) =>
-        selectedIds.has(q.id)
-          ? { ...q, status: "Accepted" as const, acceptedDate }
-          : q
-      )
-    );
-    toast({
-      title: "Quotes accepted",
-      description: `${selectedIds.size} quotes have been marked as accepted.`,
-    });
-    setSelectedIds(new Set());
-    setIsSelectMode(false);
-  };
-
   const handleBulkDelete = () => {
-    onUpdateQuotes((prev) => prev.filter((q) => !selectedIds.has(q.id)));
+    const count = selectedIds.length;
+    onUpdateQuotes((prev) => prev.filter((q) => !selectedIds.includes(q.id)));
+    setSelectedIds([]);
     toast({
       title: "Quotes deleted",
-      description: `${selectedIds.size} quotes have been removed.`,
+      description: `${count} quotes have been removed.`,
     });
-    setSelectedIds(new Set());
-    setIsSelectMode(false);
-  };
-
-  const handleToggleSelectMode = () => {
-    setIsSelectMode((prev) => !prev);
-    if (isSelectMode) {
-      setSelectedIds(new Set());
-    }
   };
 
   const handleEdit = (quote: Quote) => {
@@ -367,7 +281,7 @@ export function QuoteDashboard({
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="space-y-4">
       <QuoteFilters
         ref={searchInputRef}
         searchQuery={searchQuery}
@@ -377,54 +291,32 @@ export function QuoteDashboard({
         sortOption={sortOption}
         onSortChange={setSortOption}
         counts={counts}
-        isSelectMode={isSelectMode}
-        onToggleSelectMode={handleToggleSelectMode}
+        isSelectMode={selectedIds.length > 0}
+        onToggleSelectMode={() => setSelectedIds([])}
       />
 
-      {isSelectMode && (
+      {selectedIds.length > 0 && (
         <QuoteBulkActionsBar
-          selectedCount={selectedIds.size}
+          selectedCount={selectedIds.length}
           totalCount={filteredQuotes.length}
-          onSelectAll={handleSelectAll}
-          onAccept={handleBulkAccept}
+          onSelectAll={() => setSelectedIds(filteredQuotes.map((q) => q.id))}
+          onAccept={() => {}}
           onDelete={handleBulkDelete}
-          onCancel={handleToggleSelectMode}
+          onCancel={() => setSelectedIds([])}
         />
       )}
 
-      {filteredQuotes.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary mx-auto mb-4">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">No quotes found</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Try adjusting your search or filter
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredQuotes.map((quote) => (
-            <QuoteListItem
-              key={quote.id}
-              quote={quote}
-              onClick={() => {
-                setSelectedQuote(quote);
-                setView("detail");
-              }}
-              onEdit={handleEdit}
-              onSend={handleSend}
-              onAccept={handleAccept}
-              onConvertToInvoice={onConvertToInvoice}
-              onDownloadPdf={handleDownloadPdf}
-              onDelete={handleDelete}
-              isSelectMode={isSelectMode}
-              isSelected={selectedIds.has(quote.id)}
-              onToggleSelect={handleToggleSelect}
-            />
-          ))}
-        </div>
-      )}
+      <QuoteTable
+        quotes={filteredQuotes}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onConvertToInvoice={onConvertToInvoice}
+        onDownloadPdf={handleDownloadPdf}
+        sortOption={sortOption}
+        onSortChange={setSortOption}
+      />
     </div>
   );
 }

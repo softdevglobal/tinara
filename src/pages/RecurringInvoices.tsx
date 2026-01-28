@@ -3,6 +3,7 @@ import { Repeat, Plus } from "lucide-react";
 import { RecurringInvoiceDashboard } from "@/components/RecurringInvoiceDashboard";
 import { AppLayout } from "@/components/AppLayout";
 import { useApp } from "@/context/AppContext";
+import { Button } from "@/components/ui/button";
 
 const RecurringInvoices = () => {
   const [showNewForm, setShowNewForm] = useState(false);
@@ -31,13 +32,10 @@ const RecurringInvoices = () => {
             <p className="text-sm text-muted-foreground">Automate your billing</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowNewForm(true)}
-          className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">New Schedule</span>
-        </button>
+        <Button size="sm" onClick={() => setShowNewForm(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Schedule
+        </Button>
       </div>
 
       <RecurringInvoiceDashboard

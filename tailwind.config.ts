@@ -14,13 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Noto Sans JP', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-      },
-      fontSize: {
-        'body': ['1.125rem', { lineHeight: '1.7' }],
-        'heading': ['1.75rem', { lineHeight: '1.3', fontWeight: '600' }],
-        'title': ['2.8rem', { lineHeight: '1.2', fontWeight: '700', letterSpacing: '-0.02em' }],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -64,14 +58,16 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        invoice: {
-          overdue: "hsl(var(--invoice-overdue))",
-          "overdue-bg": "hsl(var(--invoice-overdue-bg))",
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
         },
-        sakura: "hsl(var(--sakura))",
-        indigo: "hsl(var(--indigo))",
-        gold: "hsl(var(--gold))",
-        ocean: "hsl(var(--ocean))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -87,20 +83,10 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "fade-in": {
-          from: { opacity: "0", transform: "translateY(8px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        "slide-in": {
-          from: { opacity: "0", transform: "translateX(-8px)" },
-          to: { opacity: "1", transform: "translateX(0)" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.3s ease-out",
-        "slide-in": "slide-in 0.3s ease-out",
       },
     },
   },

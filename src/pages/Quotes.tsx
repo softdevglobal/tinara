@@ -7,10 +7,14 @@ import { exportQuotesToCSV } from "@/lib/csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { Quote } from "@/data/quotes";
 import { Invoice } from "@/data/invoices";
+import { Button } from "@/components/ui/button";
+import { useSearchParams } from "react-router-dom";
 
 const Quotes = () => {
-  const [showNewForm, setShowNewForm] = useState(false);
-  const { quotes, clients, setQuotes, addClient, invoices, setInvoices } = useApp();
+  const [searchParams] = useSearchParams();
+  const showNewFromUrl = searchParams.get("new") === "quote";
+  const [showNewForm, setShowNewForm] = useState(showNewFromUrl);
+  const { quotes, clients, setQuotes, addClient, setInvoices } = useApp();
   const { toast } = useToast();
 
   const handleExportQuotes = () => {
@@ -68,20 +72,21 @@ const Quotes = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleExportQuotes}
-            className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border text-sm font-medium hover:bg-secondary transition-colors"
           >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
-          <button
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button
+            size="sm"
             onClick={() => setShowNewForm(true)}
-            className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">New Quote</span>
-          </button>
+            <Plus className="h-4 w-4 mr-2" />
+            New Quote
+          </Button>
         </div>
       </div>
 

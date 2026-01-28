@@ -1,110 +1,27 @@
-import { ReactNode, useState, useEffect, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { FileText, Users, ClipboardList, Repeat, Keyboard } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { KeyboardShortcutsModal } from "./KeyboardShortcutsModal";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ReactNode } from "react";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { TopHeader } from "@/components/layout/TopHeader";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
-  { label: "Invoices", href: "/", icon: FileText },
-  { label: "Quotes", href: "/quotes", icon: ClipboardList },
-  { label: "Recurring", href: "/recurring", icon: Repeat },
-  { label: "Clients", href: "/clients", icon: Users },
-];
-
 export function AppLayout({ children }: AppLayoutProps) {
-  const location = useLocation();
-  const [showShortcuts, setShowShortcuts] = useState(false);
-
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Ignore when typing in inputs
-    const target = event.target as HTMLElement;
-    if (
-      target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.isContentEditable
-    ) {
-      return;
-    }
-
-    // Check for '?' key
-    if (event.key === "?") {
-      event.preventDefault();
-      setShowShortcuts(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
-
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background">
-        {/* Header with Navigation */}
-        <header className="border-b-2 border-border bg-card sticky top-0 z-10 shadow-sm">
-          <div className="container max-w-5xl py-4">
-            <nav className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {navItems.map((item) => {
-                  const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      to={item.href}
-                      className={cn(
-                        "flex items-center gap-3 px-5 py-3 rounded-xl text-base font-medium transition-all",
-                        isActive
-                          ? "bg-gradient-to-r from-primary to-sakura text-primary-foreground shadow-md"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowShortcuts(true)}
-                    className="h-12 w-12 rounded-xl"
-                  >
-                    <Keyboard className="h-5 w-5" />
-                    <span className="sr-only">Keyboard shortcuts</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-base">Keyboard shortcuts (?)</p>
-                </TooltipContent>
-              </Tooltip>
-            </nav>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <div className="flex-1 flex flex-col min-w-0">
+            <TopHeader />
+            <main className="flex-1 p-6 overflow-auto">
+              {children}
+            </main>
           </div>
-        </header>
-
-        {/* Main Content */}
-        <main className="container max-w-5xl py-10">{children}</main>
-
-        {/* Keyboard Shortcuts Modal */}
-        <KeyboardShortcutsModal
-          open={showShortcuts}
-          onOpenChange={setShowShortcuts}
-        />
-      </div>
+        </div>
+      </SidebarProvider>
     </TooltipProvider>
   );
 }
