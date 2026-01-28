@@ -1,213 +1,159 @@
 
-# Fix Invoice Creation & New Client Flow
+# Smart Item Code Search with Auto-Suggest
 
-## Executive Summary
+## Overview
+Enhance the line item entry experience in invoices and quotes to allow typing an item code/name that searches through the existing items database, suggests matches as you type, and automatically offers to add non-existing items to the database.
 
-Invoice creation is broken due to a React state synchronization bug where URL query parameters (`?new=invoice`) don't properly trigger the new invoice form to display after initial page load. Additionally, there are form validation issues that silently block submission.
+## Current State
+- **ItemPicker component**: A popover-based catalog browser with search and category filters
+- **LineItemsEditor**: Uses separate "From Catalog" button and "Manual" button to add line items
+- **EnhancedQuoteForm**: Uses simple Input fields for description/qty/price without item lookup
+- **AppContext**: Already has `addItem()` method to add new items to the database
 
----
+## Proposed Solution
 
-## Root Cause Analysis
+### New Component: `SmartItemInput`
+A combined input field that:
+1. Shows autocomplete suggestions as user types
+2. Searches by item name, SKU, and description
+3. When a match is selected, auto-fills description, unit price, and quantity
+4. When no match exists and user finishes typing, offers to "Add as new item"
 
-### Issue 1: URL Parameter Not Triggering Form Display
-
-**Location:** `src/pages/Index.tsx`
-
-**Problem:** The component uses `useState` to initialize `showNewForm` from URL parameters, but `useState` only runs on initial mount. When navigating via React Router (SPA navigation), the component doesn't remount, so the state doesn't update.
-
+### User Experience Flow
 ```text
-// Current (broken):
-const showNewFromUrl = searchParams.get("new") === "invoice";
-const [showNewForm, setShowNewForm] = useState(showNewFromUrl);
-// showNewForm stays false even when URL changes to ?new=invoice
+User types "Consul" in description field
+       |
+       v
++------------------------+
+| Consultation Hour      | <-- Matching suggestions appear
+| $150.00 per hour       |
++------------------------+
+| + Add "Consul" as new  | <-- Option to add if no exact match
++------------------------+
+       |
+       v (user selects existing OR adds new)
+       |
+Line item auto-fills with details
 ```
 
-**Fix:** Add a `useEffect` to sync state when URL parameters change:
+## Technical Implementation
 
-```text
-useEffect(() => {
-  if (showNewFromUrl) {
-    setShowNewForm(true);
-  }
-}, [showNewFromUrl]);
+### 1. Create `SmartItemInput` Component
+**File**: `src/components/SmartItemInput.tsx`
+
+This component will:
+- Accept current description value and onChange handler
+- Use `useApp()` to access items database
+- Debounce search input (300ms)
+- Display dropdown with:
+  - Matching items (by name, SKU, description)
+  - "Add as new item" option at bottom when text doesn't match exactly
+- On item select: trigger callback with full item details
+- On "Add new": open inline quick-add form or full item form
+
+**Key Features**:
+- `Command` component from shadcn/ui for keyboard navigation
+- Fuzzy matching on name/SKU/description
+- Shows price and category for each suggestion
+- Pressing Enter on "Add new" opens new item dialog
+
+### 2. Create `QuickAddItemForm` Component
+**File**: `src/components/QuickAddItemForm.tsx`
+
+A lightweight inline form for adding items quickly without leaving the invoice/quote:
+- Name (pre-filled with typed text)
+- Unit Price
+- Category dropdown
+- Unit dropdown
+- "Add to catalog" button
+
+### 3. Update `LineItemsEditor` Component
+**File**: `src/components/LineItemsEditor.tsx`
+
+Changes:
+- Replace the plain `<Input>` for description with `<SmartItemInput>`
+- Remove separate "From Catalog" button (now integrated into input)
+- Keep "Manual" button as "Add Line" for blank rows
+- Handle item selection to auto-populate: description, unitPrice, sourceItemId, unit
+
+### 4. Update `EnhancedQuoteForm` Component
+**File**: `src/components/EnhancedQuoteForm.tsx`
+
+Changes:
+- Replace plain description Input with `<SmartItemInput>`
+- Add `onAddItem` prop to allow adding new items to catalog
+- Auto-populate price when item selected
+- Track `sourceItemId` on line items
+
+### 5. Update `NewInvoiceForm` Component
+**File**: `src/components/NewInvoiceForm.tsx`
+
+Changes:
+- Ensure `LineItemsEditor` receives `onAddItem` callback
+- Connect to `addItem` from AppContext
+
+## Component Structure
+
+```
+SmartItemInput
+├── Input field (controlled)
+├── Popover/Command dropdown
+│   ├── Search results (filtered items)
+│   │   └── Item row (name, SKU, price, category)
+│   ├── Separator
+│   └── "Add [typed text] as new item" action
+└── QuickAddItemForm (inline, shown when adding new)
 ```
 
----
+## Props Interface
 
-### Issue 2: Form Validation Silently Blocking Submission
-
-**Location:** `src/lib/invoice-schema.ts` and `src/components/NewInvoiceForm.tsx`
-
-**Problem:** The form schema requires:
-- `description` to have at least 1 character (line 5: `z.string().min(1, "Description is required")`)
-- At least one line item (line 16: `.min(1, "At least one line item is required")`)
-
-When the user clicks "Create Invoice" with an empty description, the form silently fails validation. No error message is shown because the validation happens on the form schema level but the UI doesn't highlight the line item errors.
-
-**Fix:** 
-1. Add explicit validation feedback for line items in the UI
-2. Show error messages on incomplete line items
-3. Add visual indication of which fields are invalid
-
----
-
-### Issue 3: InvoiceDashboard Calling setState During Render
-
-**Location:** `src/components/InvoiceDashboard.tsx` (lines 93-95)
-
-**Problem:** Calling `setView` during render is a React anti-pattern that can cause issues:
-
-```text
-// Current (problematic):
-if (showNewForm && view !== "new") {
-  setView("new");
+```typescript
+interface SmartItemInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onItemSelect: (item: Item) => void;
+  onAddNewItem: (item: Item) => void;
+  placeholder?: string;
+  className?: string;
 }
 ```
 
-**Fix:** Move this synchronization logic to a `useEffect`:
+## Files to Create
+1. `src/components/SmartItemInput.tsx` - Main autocomplete component
+2. `src/components/QuickAddItemForm.tsx` - Inline new item form
 
-```text
-useEffect(() => {
-  if (showNewForm && view !== "new") {
-    setView("new");
-  }
-}, [showNewForm]);
-```
+## Files to Modify
+1. `src/components/LineItemsEditor.tsx` - Use SmartItemInput for description
+2. `src/components/EnhancedQuoteForm.tsx` - Use SmartItemInput in line items
+3. `src/components/NewInvoiceForm.tsx` - Pass addItem handler
 
----
+## Behavior Details
 
-## Implementation Plan
+### Search Logic
+- Minimum 2 characters to trigger search
+- Search fields: `name`, `sku`, `description`
+- Case-insensitive matching
+- Only show active items (`isActive: true`)
+- Limit to 5-8 suggestions for clean UI
 
-### Phase 1: Fix URL Parameter Synchronization
+### Adding New Items
+When user types something that doesn't match and:
+- Clicks "Add as new item" option
+- OR presses Enter when that option is focused
 
-**File: `src/pages/Index.tsx`**
+A quick-add form appears inline with:
+- Name pre-filled with typed text
+- Default category: "Services"
+- Default unit: "unit"  
+- Price field focused for quick entry
 
-1. Add `useEffect` import if not present
-2. Add effect to sync `showNewForm` with URL parameter changes:
+After adding:
+- Item is saved to database via `addItem()`
+- Line item is populated with new item details
+- Toast confirmation: "Item added to catalog"
 
-```text
-useEffect(() => {
-  if (showNewFromUrl && !showNewForm) {
-    setShowNewForm(true);
-  }
-}, [showNewFromUrl]);
-```
-
-### Phase 2: Fix InvoiceDashboard setState in Render
-
-**File: `src/components/InvoiceDashboard.tsx`**
-
-1. Remove the inline `if` statement that sets state during render
-2. Add `useEffect` to handle sync:
-
-```text
-// Remove this (lines 93-95):
-if (showNewForm && view !== "new") {
-  setView("new");
-}
-
-// Add useEffect instead:
-useEffect(() => {
-  if (showNewForm) {
-    setView("new");
-  }
-}, [showNewForm]);
-```
-
-### Phase 3: Improve Line Item Validation UX
-
-**File: `src/components/LineItemsEditor.tsx`**
-
-1. Add visual feedback for invalid line items (empty description, zero quantity)
-2. Show red border on input fields that are invalid
-3. Add inline error messages
-
-**File: `src/components/NewInvoiceForm.tsx`**
-
-1. Add validation check before submit that shows user-friendly error messages
-2. Highlight incomplete line items when validation fails
-3. Show toast notification explaining what's wrong
-
-### Phase 4: Fix Quotes Page Same Issue
-
-**File: `src/pages/Quotes.tsx`**
-
-Apply the same `useEffect` fix for URL parameter synchronization:
-
-```text
-useEffect(() => {
-  if (showNewFromUrl && !showNewForm) {
-    setShowNewForm(true);
-  }
-}, [showNewFromUrl]);
-```
-
----
-
-## Summary of File Changes
-
-### Files to Update (4 files)
-
-1. **`src/pages/Index.tsx`**
-   - Add `useEffect` to sync `showNewForm` with URL params
-   - Ensure form displays when navigating to `/?new=invoice`
-
-2. **`src/components/InvoiceDashboard.tsx`**
-   - Move setState out of render into `useEffect`
-   - Add `useEffect` dependency array
-
-3. **`src/components/NewInvoiceForm.tsx`**
-   - Add line item validation feedback before submit
-   - Show error toast with specific validation errors
-   - Highlight invalid line items
-
-4. **`src/pages/Quotes.tsx`**
-   - Apply same `useEffect` fix for URL parameter sync
-
----
-
-## Technical Details
-
-### React State Synchronization Pattern
-
-The correct pattern for syncing state with URL parameters:
-
-```text
-// URL parameter as derived value
-const [searchParams] = useSearchParams();
-const showNewFromUrl = searchParams.get("new") === "invoice";
-
-// Local state for form visibility
-const [showNewForm, setShowNewForm] = useState(showNewFromUrl);
-
-// Sync when URL changes (SPA navigation)
-useEffect(() => {
-  if (showNewFromUrl) {
-    setShowNewForm(true);
-  }
-}, [showNewFromUrl]);
-```
-
-### Validation Error Display
-
-When "Create Invoice" is clicked with invalid data:
-
-1. Check if any line item has empty `description`
-2. Check if any line item has `quantity <= 0`  
-3. Check if no client is selected
-4. If any validation fails:
-   - Show toast with clear message: "Please fill in all required fields"
-   - Scroll to first invalid field
-   - Add red border to invalid inputs
-
----
-
-## Expected Outcome
-
-After implementation:
-
-1. Clicking "+ Create → New Invoice" correctly shows the invoice form
-2. URL `/?new=invoice` properly displays the new invoice form on navigation
-3. Form validation shows clear error messages for incomplete line items
-4. Users can create new clients inline when creating invoices
-5. Same fixes applied to Quotes page for consistency
+### Keyboard Navigation
+- Arrow keys: Navigate suggestions
+- Enter: Select highlighted item or add new
+- Escape: Close dropdown, keep typed text
+- Tab: Close dropdown, move to next field
