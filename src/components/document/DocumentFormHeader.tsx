@@ -1,4 +1,5 @@
-import { ArrowLeft, MoreHorizontal, Save, X, Copy, FileText, Ban, Trash2, Download, Printer } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Save, X, Copy, FileText, Ban, Trash2, Download, Printer, ClipboardList } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -26,6 +27,8 @@ interface DocumentFormHeaderProps {
   documentNumber?: string;
   status?: InvoiceStatus | QuoteStatus;
   hasUnsavedChanges: boolean;
+  sourceQuoteId?: string;
+  sourceQuoteNumber?: string;
   onBack: () => void;
   onSave: () => void;
   onDuplicate?: () => void;
@@ -42,6 +45,8 @@ export function DocumentFormHeader({
   documentNumber,
   status,
   hasUnsavedChanges,
+  sourceQuoteId,
+  sourceQuoteNumber,
   onBack,
   onSave,
   onDuplicate,
@@ -93,15 +98,28 @@ export function DocumentFormHeader({
   return (
     <>
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {isEditing 
-            ? `${typeLabel} #${documentNumber}` 
-            : `Create ${type === "invoice" ? "an invoice" : "an estimate"}`}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {isEditing 
+              ? `${typeLabel} #${documentNumber}` 
+              : `Create ${type === "invoice" ? "an invoice" : "an estimate"}`}
+          </button>
+          
+          {/* Source Quote Reference */}
+          {type === "invoice" && isEditing && sourceQuoteId && sourceQuoteNumber && (
+            <Link
+              to={`/quotes?edit=${sourceQuoteId}`}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"
+            >
+              <ClipboardList className="h-3 w-3" />
+              From Quote #{sourceQuoteNumber}
+            </Link>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           {/* Actions dropdown */}

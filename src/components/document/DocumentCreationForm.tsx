@@ -95,11 +95,17 @@ export function DocumentCreationForm({
   onConvertToInvoice,
 }: DocumentCreationFormProps) {
   const { toast } = useToast();
-  const { brandingSettings } = useApp();
+  const { brandingSettings, quotes } = useApp();
   const { generateInvoiceNumber, generateQuoteNumber, peekNextInvoiceNumber, peekNextQuoteNumber } = useDocumentCounters();
   
   const isEditing = !!editingDocument;
   const typeLabel = type === "invoice" ? "Invoice" : "Estimate";
+
+  // Helper to get source quote number for converted invoices
+  const getSourceQuoteNumber = (quoteId: string): string | undefined => {
+    const quote = quotes.find(q => q.id === quoteId);
+    return quote?.number;
+  };
 
   // Form state
   const [activeTab, setActiveTab] = useState<DocumentCreationTab>("create");
@@ -414,6 +420,8 @@ export function DocumentCreationForm({
         documentNumber={documentNumber}
         status={status as any}
         hasUnsavedChanges={hasUnsavedChanges}
+        sourceQuoteId={type === "invoice" && isEditing && (editingDocument as Invoice)?.quoteId ? (editingDocument as Invoice).quoteId : undefined}
+        sourceQuoteNumber={type === "invoice" && isEditing && (editingDocument as Invoice)?.quoteId ? getSourceQuoteNumber((editingDocument as Invoice).quoteId!) : undefined}
         onBack={onBack}
         onSave={handleSave}
         onConvertToInvoice={type === "quote" && isEditing ? handleConvertToInvoice : undefined}
