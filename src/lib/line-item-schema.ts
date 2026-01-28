@@ -1,10 +1,16 @@
 import { z } from "zod";
 import { TaxCode } from "./tax-utils";
+import { TaxCategory } from "@/types/tax-settings";
 
 /**
  * Discount types for line items
  */
 export type DiscountType = "NONE" | "PERCENT" | "AMOUNT";
+
+/**
+ * Item types for categorization
+ */
+export type ItemType = "parts" | "labor" | "service" | "other";
 
 /**
  * DocumentLineItem represents an immutable snapshot of an item
@@ -24,8 +30,28 @@ export interface DocumentLineItem {
   qty: number;
   discountType: DiscountType;
   discountValue: number;              // Percent (0-100) or cents depending on type
-  taxCodeSnapshot: TaxCode;
   sortOrder: number;
+  
+  // Legacy tax code (backwards compat)
+  taxCodeSnapshot: TaxCode;
+  
+  // Enhanced worldwide tax fields
+  taxCategorySnapshot?: TaxCategory;
+  taxRateSnapshot?: number;           // Resolved rate at creation time (e.g., 10 for 10%)
+  taxNameSnapshot?: string;           // e.g., "GST", "VAT 20%"
+  taxAmountCentsSnapshot?: number;    // Pre-calculated tax for this line
+  discountAmountCentsSnapshot?: number;
+  lineTotalCentsSnapshot?: number;
+  
+  // Reverse charge
+  isReverseCharge?: boolean;
+  reverseChargeNote?: string;
+  
+  // Categorization
+  itemType?: ItemType;
+  itemCode?: string;                  // SKU
+  costPriceCents?: number;            // Internal cost (not shown to client)
+  accountCode?: string;               // Accounting integration
 }
 
 /**
@@ -44,6 +70,22 @@ export const documentLineItemSchema = z.object({
   discountValue: z.number().min(0),
   taxCodeSnapshot: z.enum(["GST", "GST_FREE", "NONE"]),
   sortOrder: z.number().int().min(0),
+  // Enhanced fields (optional for backwards compat)
+  taxCategorySnapshot: z.enum([
+    "STANDARD", "REDUCED", "ZERO", "EXEMPT", "OUT_OF_SCOPE",
+    "DIGITAL_SERVICE", "PHYSICAL_GOODS", "LABOR_SERVICE", "SHIPPING"
+  ]).optional(),
+  taxRateSnapshot: z.number().min(0).max(100).optional(),
+  taxNameSnapshot: z.string().max(100).optional(),
+  taxAmountCentsSnapshot: z.number().int().optional(),
+  discountAmountCentsSnapshot: z.number().int().optional(),
+  lineTotalCentsSnapshot: z.number().int().optional(),
+  isReverseCharge: z.boolean().optional(),
+  reverseChargeNote: z.string().max(200).optional(),
+  itemType: z.enum(["parts", "labor", "service", "other"]).optional(),
+  itemCode: z.string().max(50).optional(),
+  costPriceCents: z.number().int().optional(),
+  accountCode: z.string().max(50).optional(),
 });
 
 /**

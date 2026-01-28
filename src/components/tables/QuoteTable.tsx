@@ -75,6 +75,7 @@ export function QuoteTable({
       Draft: "bg-muted text-muted-foreground",
       Sent: "bg-amber-500 text-white",
       Accepted: "bg-green-500 text-white",
+      Declined: "bg-destructive text-destructive-foreground",
       Expired: "bg-destructive text-destructive-foreground",
       Converted: "bg-green-500 text-white",
       Unsent: "bg-muted text-muted-foreground border",
