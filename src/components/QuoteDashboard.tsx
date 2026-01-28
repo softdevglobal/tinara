@@ -23,6 +23,8 @@ interface QuoteDashboardProps {
   onConvertToInvoice: (quote: Quote) => Invoice;
   showNewForm?: boolean;
   onCloseNewForm?: () => void;
+  editQuoteId?: string | null;
+  onClearEditQuoteId?: () => void;
 }
 
 function sortQuotes(quotes: Quote[], sortOption: QuoteSortOption): Quote[] {
@@ -61,6 +63,8 @@ export function QuoteDashboard({
   onConvertToInvoice,
   showNewForm,
   onCloseNewForm,
+  editQuoteId,
+  onClearEditQuoteId,
 }: QuoteDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState<QuoteSortOption>("date-desc");
@@ -83,6 +87,18 @@ export function QuoteDashboard({
       setView("new");
     }
   }, [showNewForm, view]);
+
+  // Handle edit quote by ID from URL
+  useEffect(() => {
+    if (editQuoteId && view === "list") {
+      const quoteToEdit = quotes.find((q) => q.id === editQuoteId);
+      if (quoteToEdit) {
+        setEditingQuote(quoteToEdit);
+        setView("edit");
+        onClearEditQuoteId?.();
+      }
+    }
+  }, [editQuoteId, quotes, view, onClearEditQuoteId]);
 
   const filteredQuotes = useMemo(() => {
     const filtered = quotes.filter((quote) => {

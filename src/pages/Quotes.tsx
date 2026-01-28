@@ -20,8 +20,9 @@ import {
 } from "@/components/ui/select";
 
 const Quotes = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const showNewFromUrl = searchParams.get("new") === "quote";
+  const editQuoteId = searchParams.get("edit");
   const [showNewForm, setShowNewForm] = useState(showNewFromUrl);
   const [activeTab, setActiveTab] = useState<"pending" | "done">("pending");
   const [taxYearFilter, setTaxYearFilter] = useState<string>("all");
@@ -35,6 +36,12 @@ const Quotes = () => {
       setShowNewForm(true);
     }
   }, [showNewFromUrl]);
+
+  const handleClearEditQuoteId = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("edit");
+    setSearchParams(newParams, { replace: true });
+  };
 
   const handleExportQuotes = () => {
     exportQuotesToCSV(quotes);
@@ -220,6 +227,8 @@ const Quotes = () => {
             onConvertToInvoice={handleConvertToInvoice}
             showNewForm={showNewForm}
             onCloseNewForm={() => setShowNewForm(false)}
+            editQuoteId={editQuoteId}
+            onClearEditQuoteId={handleClearEditQuoteId}
           />
         </TabsContent>
 
@@ -233,6 +242,8 @@ const Quotes = () => {
             onConvertToInvoice={handleConvertToInvoice}
             showNewForm={false}
             onCloseNewForm={() => {}}
+            editQuoteId={editQuoteId}
+            onClearEditQuoteId={handleClearEditQuoteId}
           />
         </TabsContent>
       </Tabs>

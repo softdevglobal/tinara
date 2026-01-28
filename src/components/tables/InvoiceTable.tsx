@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { MoreHorizontal, ArrowUpDown } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, ClipboardList } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Invoice, InvoiceSortOption } from "@/data/invoices";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,6 +21,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useApp } from "@/context/AppContext";
 
 interface InvoiceTableProps {
   invoices: Invoice[];
@@ -44,8 +51,15 @@ export function InvoiceTable({
   sortOption,
   onSortChange,
 }: InvoiceTableProps) {
+  const { quotes } = useApp();
   const allSelected = invoices.length > 0 && selectedIds.length === invoices.length;
   const someSelected = selectedIds.length > 0 && selectedIds.length < invoices.length;
+
+  // Helper to find source quote for an invoice
+  const getSourceQuote = (quoteId: string | undefined) => {
+    if (!quoteId) return null;
+    return quotes.find((q) => q.id === quoteId);
+  };
 
   const handleSelectAll = () => {
     if (allSelected) {
@@ -155,7 +169,31 @@ export function InvoiceTable({
                   />
                 </TableCell>
                 <TableCell className="font-mono text-sm">
-                  {invoice.number}
+                  <div className="flex items-center gap-2">
+                    <span>{invoice.number}</span>
+                    {invoice.quoteId && (() => {
+                      const sourceQuote = getSourceQuote(invoice.quoteId);
+                      if (sourceQuote) {
+                        return (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link
+                                to={`/quotes?edit=${sourceQuote.id}`}
+                                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ClipboardList className="h-3 w-3" />
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Converted from Quote #{sourceQuote.number}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div>
