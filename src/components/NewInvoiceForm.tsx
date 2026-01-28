@@ -6,7 +6,9 @@ import { CalendarIcon, ArrowLeft, Send, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invoiceFormSchema, InvoiceFormData, LineItem } from "@/lib/invoice-schema";
 import { Invoice } from "@/data/invoices";
-import { Client, clients as initialClients } from "@/data/clients";
+import { Client } from "@/data/clients";
+import { Item } from "@/data/items";
+import { centsToDollars } from "@/lib/money-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +32,12 @@ import { ClientSelector } from "./ClientSelector";
 import { NewClientForm } from "./NewClientForm";
 import { useToast } from "@/hooks/use-toast";
 
+// Extended line item that tracks source item
+interface ExtendedLineItem extends LineItem {
+  sourceItemId?: string;
+  unit?: string;
+}
+
 interface NewInvoiceFormProps {
   onBack: () => void;
   onSubmit: (data: InvoiceFormData) => void;
@@ -42,7 +50,7 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-const defaultLineItem: () => LineItem = () => ({
+const defaultLineItem = (): ExtendedLineItem => ({
   id: generateId(),
   description: "",
   quantity: 1,
@@ -62,7 +70,7 @@ export function NewInvoiceForm({
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   // Initialize line items based on editing mode
-  const getInitialLineItems = (): LineItem[] => {
+  const getInitialLineItems = (): ExtendedLineItem[] => {
     if (editingInvoice) {
       return [{
         id: generateId(),
@@ -74,7 +82,7 @@ export function NewInvoiceForm({
     return [defaultLineItem()];
   };
 
-  const [lineItems, setLineItems] = useState<LineItem[]>(getInitialLineItems);
+  const [lineItems, setLineItems] = useState<ExtendedLineItem[]>(getInitialLineItems);
   const [taxRate, setTaxRate] = useState(editingInvoice ? 0 : 10);
 
   const form = useForm<InvoiceFormData>({
@@ -174,6 +182,24 @@ export function NewInvoiceForm({
   const handleTaxRateChange = (rate: number) => {
     setTaxRate(rate);
     form.setValue("taxRate", rate);
+  };
+
+  /**
+   * Add item from catalog - creates a snapshot of the catalog item
+   * Future price changes to the catalog won't affect this line item
+   */
+  const handleAddFromCatalog = (item: Item) => {
+    const newItem: ExtendedLineItem = {
+      id: generateId(),
+      description: item.name,
+      quantity: item.defaultQty,
+      unitPrice: centsToDollars(item.unitPriceCents),
+      sourceItemId: item.id,
+      unit: item.unit,
+    };
+    const updated = [...lineItems, newItem];
+    setLineItems(updated);
+    form.setValue("lineItems", updated);
   };
 
   const handleFormSubmit = (data: InvoiceFormData) => {
@@ -363,6 +389,7 @@ export function NewInvoiceForm({
               onAdd={handleAddLineItem}
               onRemove={handleRemoveLineItem}
               onUpdate={handleUpdateLineItem}
+              onAddFromCatalog={handleAddFromCatalog}
             />
 
             {/* Totals */}

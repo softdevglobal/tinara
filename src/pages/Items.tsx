@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Package, Plus, Search } from "lucide-react";
+import { Package, Plus, Search, Archive } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ItemTable } from "@/components/tables/ItemTable";
+import { NewItemForm } from "@/components/NewItemForm";
+import { ItemDeleteDialog } from "@/components/ItemDeleteDialog";
 import { useToast } from "@/hooks/use-toast";
+import { Item } from "@/data/items";
 import {
   Select,
   SelectContent,
@@ -13,29 +16,125 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Items = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const { items, setItems } = useApp();
+  const [statusFilter, setStatusFilter] = useState<"active" | "archived" | "all">("active");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+  
+  const { 
+    items, 
+    addItem, 
+    updateItem, 
+    archiveItem, 
+    restoreItem,
+    deleteItem,
+    isItemReferenced,
+    getItemReferenceCount,
+  } = useApp();
   const { toast } = useToast();
 
+  // Filter items based on search, category, and status
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+      (item.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+    
     const matchesCategory =
       categoryFilter === "all" || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && item.isActive) ||
+      (statusFilter === "archived" && !item.isActive);
+    
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const handleDelete = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  const activeCount = items.filter((i) => i.isActive).length;
+  const archivedCount = items.filter((i) => !i.isActive).length;
+
+  const handleOpenNewForm = () => {
+    setEditingItem(null);
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEditForm = (item: Item) => {
+    setEditingItem(item);
+    setIsFormOpen(true);
+  };
+
+  const handleFormSubmit = (item: Item) => {
+    if (editingItem) {
+      updateItem(item);
+      toast({
+        title: "Item updated",
+        description: `${item.name} has been updated.`,
+      });
+    } else {
+      addItem(item);
+      toast({
+        title: "Item added",
+        description: `${item.name} has been added to your catalog.`,
+      });
+    }
+  };
+
+  const handleArchiveToggle = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+
+    if (item.isActive) {
+      archiveItem(id);
+      toast({
+        title: "Item archived",
+        description: `${item.name} has been archived.`,
+      });
+    } else {
+      restoreItem(id);
+      toast({
+        title: "Item restored",
+        description: `${item.name} has been restored.`,
+      });
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!itemToDelete) return;
+    
+    deleteItem(itemToDelete.id);
     toast({
       title: "Item deleted",
-      description: "The item has been removed from your catalog.",
+      description: `${itemToDelete.name} has been permanently deleted.`,
     });
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
+  };
+
+  const handleConfirmArchive = () => {
+    if (!itemToDelete) return;
+    
+    archiveItem(itemToDelete.id);
+    toast({
+      title: "Item archived",
+      description: `${itemToDelete.name} has been archived.`,
+    });
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
   };
 
   return (
@@ -48,14 +147,34 @@ const Items = () => {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground">Items</h1>
-            <p className="text-sm text-muted-foreground">Manage your product & service catalog</p>
+            <p className="text-sm text-muted-foreground">
+              Manage your product & service catalog
+            </p>
           </div>
         </div>
-        <Button size="sm">
+        <Button size="sm" onClick={handleOpenNewForm}>
           <Plus className="h-4 w-4 mr-2" />
           New Item
         </Button>
       </div>
+
+      {/* Status Tabs */}
+      <Tabs
+        value={statusFilter}
+        onValueChange={(v) => setStatusFilter(v as "active" | "archived" | "all")}
+        className="mb-4"
+      >
+        <TabsList>
+          <TabsTrigger value="active">
+            Active ({activeCount})
+          </TabsTrigger>
+          <TabsTrigger value="archived">
+            <Archive className="h-3.5 w-3.5 mr-1.5" />
+            Archived ({archivedCount})
+          </TabsTrigger>
+          <TabsTrigger value="all">All ({items.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filters */}
       <div className="flex items-center justify-between mb-4">
@@ -95,7 +214,7 @@ const Items = () => {
           <p className="text-muted-foreground max-w-sm mb-4">
             Add products and services to quickly include them in invoices and quotes.
           </p>
-          <Button>
+          <Button onClick={handleOpenNewForm}>
             <Plus className="h-4 w-4 mr-2" />
             Add First Item
           </Button>
@@ -105,7 +224,30 @@ const Items = () => {
           items={filteredItems}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
-          onDelete={handleDelete}
+          onEdit={handleOpenEditForm}
+          onDelete={handleDeleteClick}
+          onArchive={handleArchiveToggle}
+        />
+      )}
+
+      {/* New/Edit Item Form */}
+      <NewItemForm
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSubmit={handleFormSubmit}
+        editingItem={editingItem}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      {itemToDelete && (
+        <ItemDeleteDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          itemName={itemToDelete.name}
+          isReferenced={isItemReferenced(itemToDelete.id)}
+          referenceCount={getItemReferenceCount(itemToDelete.id)}
+          onArchive={handleConfirmArchive}
+          onDelete={handleConfirmDelete}
         />
       )}
     </AppLayout>

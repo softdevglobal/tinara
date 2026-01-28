@@ -34,6 +34,14 @@ interface AppState {
   updateClient: (client: Client) => void;
   deleteClient: (id: string) => void;
   updateBrandingSettings: (settings: BrandingSettings) => void;
+  // Item CRUD helpers
+  addItem: (item: Item) => void;
+  updateItem: (item: Item) => void;
+  archiveItem: (id: string) => void;
+  restoreItem: (id: string) => void;
+  deleteItem: (id: string) => void;
+  isItemReferenced: (id: string) => boolean;
+  getItemReferenceCount: (id: string) => number;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -50,6 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(initialTimeEntries);
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>(defaultBrandingSettings);
 
+  // Client helpers
   const addClient = (client: Client) => {
     setClients((prev) => [client, ...prev]);
   };
@@ -64,6 +73,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateBrandingSettings = (settings: BrandingSettings) => {
     setBrandingSettings(settings);
+  };
+
+  // Item CRUD helpers
+  const addItem = (item: Item) => {
+    setItems((prev) => [item, ...prev]);
+  };
+
+  const updateItem = (item: Item) => {
+    setItems((prev) => prev.map((i) => (i.id === item.id ? item : i)));
+  };
+
+  const archiveItem = (id: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, isActive: false, updatedAt: new Date().toISOString() }
+          : item
+      )
+    );
+  };
+
+  const restoreItem = (id: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, isActive: true, updatedAt: new Date().toISOString() }
+          : item
+      )
+    );
+  };
+
+  const deleteItem = (id: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  /**
+   * Check if an item is referenced in any invoice or quote line items
+   * This is used to determine if we should archive vs delete
+   * 
+   * Note: Currently invoices/quotes don't store sourceItemId yet.
+   * This will become functional once we migrate to DocumentLineItem format.
+   * For now, returns false to allow deletion.
+   */
+  const isItemReferenced = (_itemId: string): boolean => {
+    // Future implementation: Check invoices and quotes for line items with sourceItemId
+    // Currently the data model doesn't track this yet
+    return false;
+  };
+
+  /**
+   * Get the count of documents referencing an item
+   * 
+   * Note: Currently invoices/quotes don't store sourceItemId yet.
+   * This will become functional once we migrate to DocumentLineItem format.
+   */
+  const getItemReferenceCount = (_itemId: string): number => {
+    // Future implementation: Count documents with matching sourceItemId
+    return 0;
   };
 
   const value: AppState = {
@@ -90,6 +157,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateClient,
     deleteClient,
     updateBrandingSettings,
+    // Item helpers
+    addItem,
+    updateItem,
+    archiveItem,
+    restoreItem,
+    deleteItem,
+    isItemReferenced,
+    getItemReferenceCount,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

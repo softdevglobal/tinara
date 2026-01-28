@@ -1,8 +1,23 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Link } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InvoiceFormData, LineItem } from "@/lib/invoice-schema";
+import { ItemPicker } from "@/components/ItemPicker";
+import { Item } from "@/data/items";
+import { centsToDollars } from "@/lib/money-utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// Extended line item that can track source item
+interface ExtendedLineItem extends LineItem {
+  sourceItemId?: string;
+  unit?: string;
+}
 
 interface LineItemsEditorProps {
   form: UseFormReturn<InvoiceFormData>;
@@ -10,6 +25,7 @@ interface LineItemsEditorProps {
   onAdd: () => void;
   onRemove: (index: number) => void;
   onUpdate: (index: number, field: keyof LineItem, value: string | number) => void;
+  onAddFromCatalog?: (item: Item) => void;
 }
 
 function formatCurrency(amount: number): string {
@@ -25,21 +41,39 @@ export function LineItemsEditor({
   onAdd,
   onRemove,
   onUpdate,
+  onAddFromCatalog,
 }: LineItemsEditorProps) {
+  
+  const handleCatalogSelect = (item: Item) => {
+    if (onAddFromCatalog) {
+      onAddFromCatalog(item);
+    } else {
+      // Fallback: add as regular line item with catalog values
+      onAdd();
+      const newIndex = lineItems.length;
+      onUpdate(newIndex, "description", item.name);
+      onUpdate(newIndex, "quantity", item.defaultQty);
+      onUpdate(newIndex, "unitPrice", centsToDollars(item.unitPriceCents));
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-foreground">Line Items</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onAdd}
-          className="h-8"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add Item
-        </Button>
+        <div className="flex items-center gap-2">
+          <ItemPicker onSelect={handleCatalogSelect} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAdd}
+            className="h-8"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Manual
+          </Button>
+        </div>
       </div>
 
       {/* Header */}
@@ -55,6 +89,9 @@ export function LineItemsEditor({
       <div className="space-y-3">
         {lineItems.map((item, index) => {
           const lineTotal = item.quantity * item.unitPrice;
+          const extendedItem = item as ExtendedLineItem;
+          const isFromCatalog = !!extendedItem.sourceItemId;
+          
           return (
             <div
               key={item.id}
@@ -64,12 +101,30 @@ export function LineItemsEditor({
                 <label className="text-xs text-muted-foreground sm:hidden mb-1 block">
                   Description
                 </label>
-                <Input
-                  placeholder="Item description"
-                  value={item.description}
-                  onChange={(e) => onUpdate(index, "description", e.target.value)}
-                  className="bg-card"
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Item description"
+                    value={item.description}
+                    onChange={(e) => onUpdate(index, "description", e.target.value)}
+                    className="bg-card pr-8"
+                  />
+                  {isFromCatalog && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                            <Link className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">
+                            From catalog{extendedItem.unit ? ` • per ${extendedItem.unit}` : ""}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </div>
               <div className="sm:col-span-2">
                 <label className="text-xs text-muted-foreground sm:hidden mb-1 block">
