@@ -73,8 +73,8 @@ export function QuoteDashboard({
 
   // Handler to view invoice from converted quote
   const handleViewInvoice = (invoiceId: string) => {
-    // Navigate to invoices page - could be enhanced to open specific invoice
-    navigate("/invoices");
+    // Navigate to invoices page with edit parameter
+    navigate(`/invoices?edit=${invoiceId}`);
   };
 
   // Sync with prop
