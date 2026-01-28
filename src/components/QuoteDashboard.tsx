@@ -1,10 +1,10 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Quote, QuoteSortOption } from "@/data/quotes";
+import { Invoice } from "@/data/invoices";
 import { Client } from "@/data/clients";
 import { Project } from "@/data/projects";
 import { QuoteTable } from "./tables/QuoteTable";
-import { EnhancedQuoteForm } from "./EnhancedQuoteForm";
-import { ArrowLeft } from "lucide-react";
+import { DocumentCreationForm } from "./document/DocumentCreationForm";
 import { generateQuotePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
 import { useApp } from "@/context/AppContext";
@@ -42,9 +42,9 @@ function sortQuotes(quotes: Quote[], sortOption: QuoteSortOption): Quote[] {
         if (!b.acceptedDate) return -1;
         return new Date(a.acceptedDate).getTime() - new Date(b.acceptedDate).getTime();
       case "amount-desc":
-        return b.total - a.total;
+        return (b.totals?.totalCents ?? 0) - (a.totals?.totalCents ?? 0);
       case "amount-asc":
-        return a.total - b.total;
+        return (a.totals?.totalCents ?? 0) - (b.totals?.totalCents ?? 0);
       default:
         return 0;
     }
@@ -70,9 +70,11 @@ export function QuoteDashboard({
   const { brandingSettings } = useApp();
 
   // Sync with prop
-  if (showNewForm && view !== "new") {
-    setView("new");
-  }
+  useEffect(() => {
+    if (showNewForm && view !== "new") {
+      setView("new");
+    }
+  }, [showNewForm]);
 
   const filteredQuotes = useMemo(() => {
     const filtered = quotes.filter((quote) => {
@@ -109,8 +111,8 @@ export function QuoteDashboard({
     setView("edit");
   };
 
-  const handleCreateQuote = (quote: Quote) => {
-    onUpdateQuotes((prev) => [quote, ...prev]);
+  const handleCreateQuote = (quote: Quote | Invoice) => {
+    onUpdateQuotes((prev) => [quote as Quote, ...prev]);
     setView("list");
     onCloseNewForm?.();
     toast({
@@ -119,9 +121,9 @@ export function QuoteDashboard({
     });
   };
 
-  const handleUpdateQuote = (updatedQuote: Quote) => {
+  const handleUpdateQuote = (updatedQuote: Quote | Invoice) => {
     onUpdateQuotes((prev) =>
-      prev.map((q) => q.id === updatedQuote.id ? updatedQuote : q)
+      prev.map((q) => q.id === updatedQuote.id ? updatedQuote as Quote : q)
     );
     setEditingQuote(null);
     setView("list");
@@ -139,11 +141,11 @@ export function QuoteDashboard({
 
   if (view === "new") {
     return (
-      <EnhancedQuoteForm 
-        onBack={handleBackToList} 
+      <DocumentCreationForm
+        type="quote"
+        onBack={handleBackToList}
         onSubmit={handleCreateQuote}
         clients={clients}
-        projects={projects}
         onAddClient={onAddClient}
       />
     );
@@ -151,12 +153,12 @@ export function QuoteDashboard({
 
   if (view === "edit" && editingQuote) {
     return (
-      <EnhancedQuoteForm
+      <DocumentCreationForm
+        type="quote"
         onBack={handleBackToList}
         onSubmit={handleUpdateQuote}
-        editingQuote={editingQuote}
+        editingDocument={editingQuote}
         clients={clients}
-        projects={projects}
         onAddClient={onAddClient}
       />
     );
