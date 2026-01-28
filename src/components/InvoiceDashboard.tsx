@@ -1,11 +1,13 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Invoice, InvoiceSortOption } from "@/data/invoices";
+import { Invoice, InvoiceSortOption, PaymentMethod } from "@/data/invoices";
 import { Client } from "@/data/clients";
 import { InvoiceFilters } from "./InvoiceFilters";
 import { InvoiceTable } from "./tables/InvoiceTable";
 import { InvoiceCard } from "./InvoiceCard";
 import { DocumentCreationForm } from "./document/DocumentCreationForm";
 import { BulkActionsBar } from "./BulkActionsBar";
+import { BulkMarkPaidDialog } from "./BulkMarkPaidDialog";
+import { MarkAsPaidDialog } from "./MarkAsPaidDialog";
 import { ArrowLeft } from "lucide-react";
 import { generateInvoicePdf } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
@@ -71,6 +73,8 @@ export function InvoiceDashboard({
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [markPaidInvoice, setMarkPaidInvoice] = useState<Invoice | null>(null);
+  const [showBulkPaidDialog, setShowBulkPaidDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
@@ -138,18 +142,32 @@ export function InvoiceDashboard({
     return sortInvoices(filtered, sortOption);
   }, [invoices, searchQuery, statusFilter, sortOption]);
 
-  const handleMarkPaid = (invoice: Invoice) => {
+  const handleMarkPaidRequest = (invoice: Invoice) => {
+    setMarkPaidInvoice(invoice);
+  };
+
+  const handleMarkPaidConfirm = (paymentMethod: PaymentMethod, reference?: string) => {
+    if (!markPaidInvoice) return;
     const paidDate = new Date().toISOString().split("T")[0];
     onUpdateInvoices((prev) =>
       prev.map((inv) =>
-        inv.id === invoice.id
-          ? { ...inv, status: "Paid" as const, dueDaysOverdue: 0, dueLabel: "", paidDate }
+        inv.id === markPaidInvoice.id
+          ? { 
+              ...inv, 
+              status: "Paid" as const, 
+              dueDaysOverdue: 0, 
+              dueLabel: "", 
+              paidDate,
+              paymentMethod,
+              paymentReference: reference,
+            }
           : inv
       )
     );
+    setMarkPaidInvoice(null);
     toast({
       title: "Invoice marked as paid",
-      description: "The invoice status has been updated.",
+      description: `Payment via ${paymentMethod.replace("_", " ")} recorded.`,
     });
   };
 
@@ -170,20 +188,32 @@ export function InvoiceDashboard({
     });
   };
 
-  const handleBulkMarkPaid = () => {
+  const handleBulkMarkPaidRequest = () => {
+    setShowBulkPaidDialog(true);
+  };
+
+  const handleBulkMarkPaidConfirm = (paymentMethod: PaymentMethod) => {
     const paidDate = new Date().toISOString().split("T")[0];
     const count = selectedIds.length;
     onUpdateInvoices((prev) =>
       prev.map((inv) =>
         selectedIds.includes(inv.id)
-          ? { ...inv, status: "Paid" as const, dueDaysOverdue: 0, dueLabel: "", paidDate }
+          ? { 
+              ...inv, 
+              status: "Paid" as const, 
+              dueDaysOverdue: 0, 
+              dueLabel: "", 
+              paidDate,
+              paymentMethod,
+            }
           : inv
       )
     );
     setSelectedIds([]);
+    setShowBulkPaidDialog(false);
     toast({
       title: "Invoices marked as paid",
-      description: `${count} invoice${count > 1 ? "s" : ""} marked as paid.`,
+      description: `${count} invoice${count > 1 ? "s" : ""} marked as paid via ${paymentMethod.replace("_", " ")}.`,
     });
   };
 
@@ -305,7 +335,7 @@ export function InvoiceDashboard({
           selectedCount={selectedIds.length}
           totalCount={filteredInvoices.length}
           onSelectAll={() => setSelectedIds(filteredInvoices.map((inv) => inv.id))}
-          onMarkPaid={handleBulkMarkPaid}
+          onMarkPaid={handleBulkMarkPaidRequest}
           onDelete={handleBulkDelete}
           onCancel={() => setSelectedIds([])}
         />
@@ -317,10 +347,40 @@ export function InvoiceDashboard({
         onSelectionChange={setSelectedIds}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onMarkAsPaid={handleMarkPaid}
+        onMarkAsPaid={handleMarkPaidRequest}
         onDownloadPdf={handleDownloadPdf}
         sortOption={sortOption}
         onSortChange={setSortOption}
+      />
+
+      {/* Mark as Paid Dialog */}
+      {markPaidInvoice && (
+        <MarkAsPaidDialog
+          open={!!markPaidInvoice}
+          onOpenChange={(open) => !open && setMarkPaidInvoice(null)}
+          invoiceNumber={markPaidInvoice.number}
+          invoiceAmount={new Intl.NumberFormat("en-AU", {
+            style: "currency",
+            currency: markPaidInvoice.currency,
+          }).format(markPaidInvoice.total ?? markPaidInvoice.totals.totalCents / 100)}
+          onConfirm={handleMarkPaidConfirm}
+        />
+      )}
+
+      {/* Bulk Mark as Paid Dialog */}
+      <BulkMarkPaidDialog
+        open={showBulkPaidDialog}
+        onOpenChange={setShowBulkPaidDialog}
+        invoiceCount={selectedIds.length}
+        totalAmount={new Intl.NumberFormat("en-AU", {
+          style: "currency",
+          currency: "AUD",
+        }).format(
+          invoices
+            .filter((inv) => selectedIds.includes(inv.id))
+            .reduce((sum, inv) => sum + (inv.total ?? inv.totals.totalCents / 100), 0)
+        )}
+        onConfirm={handleBulkMarkPaidConfirm}
       />
     </div>
   );

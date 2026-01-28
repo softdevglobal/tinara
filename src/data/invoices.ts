@@ -9,6 +9,17 @@ import {
 } from "@/types/document";
 
 /**
+ * Payment method types for tracking how payments were received
+ */
+export type PaymentMethod = 
+  | "cash" 
+  | "card" 
+  | "bank_transfer" 
+  | "eftpos" 
+  | "cheque" 
+  | "other";
+
+/**
  * Document totals - stored for performance, calculated from line items
  */
 export interface DocumentTotals {
@@ -35,6 +46,10 @@ export interface Invoice {
   currency: string;
   paidDate?: string;
   notes?: string;
+
+  // Payment tracking
+  paymentMethod?: PaymentMethod;
+  paymentReference?: string;
 
   // Client snapshot (captured at issue time)
   clientSnapshot?: ClientSnapshot;
