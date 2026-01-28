@@ -14,8 +14,13 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Noto Sans JP', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+      },
+      fontSize: {
+        'body': ['1.125rem', { lineHeight: '1.7' }],
+        'heading': ['1.75rem', { lineHeight: '1.3', fontWeight: '600' }],
+        'title': ['2.8rem', { lineHeight: '1.2', fontWeight: '700', letterSpacing: '-0.02em' }],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -63,6 +68,10 @@ export default {
           overdue: "hsl(var(--invoice-overdue))",
           "overdue-bg": "hsl(var(--invoice-overdue-bg))",
         },
+        sakura: "hsl(var(--sakura))",
+        indigo: "hsl(var(--indigo))",
+        gold: "hsl(var(--gold))",
+        ocean: "hsl(var(--ocean))",
       },
       borderRadius: {
         lg: "var(--radius)",
