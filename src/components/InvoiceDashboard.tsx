@@ -2,7 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { Invoice, InvoiceSortOption } from "@/data/invoices";
 import { Client } from "@/data/clients";
 import { InvoiceFilters } from "./InvoiceFilters";
-import { InvoiceListItem } from "./InvoiceListItem";
+import { InvoiceTable } from "./tables/InvoiceTable";
 import { InvoiceCard } from "./InvoiceCard";
 import { NewInvoiceForm } from "./NewInvoiceForm";
 import { BulkActionsBar } from "./BulkActionsBar";
@@ -66,8 +66,7 @@ export function InvoiceDashboard({
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [view, setView] = useState<View>(showNewForm ? "new" : "list");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
@@ -80,14 +79,7 @@ export function InvoiceDashboard({
           setView("new");
         }
       },
-      onToggleSelectMode: () => {
-        if (view === "list") {
-          setIsSelectMode((prev) => {
-            if (prev) setSelectedIds(new Set());
-            return !prev;
-          });
-        }
-      },
+      onToggleSelectMode: () => {},
       onFocusSearch: () => {
         if (view === "list") {
           searchInputRef.current?.focus();
@@ -128,11 +120,11 @@ export function InvoiceDashboard({
     return sortInvoices(filtered, sortOption);
   }, [invoices, searchQuery, statusFilter, sortOption]);
 
-  const handleMarkPaid = (id: string) => {
+  const handleMarkPaid = (invoice: Invoice) => {
     const paidDate = new Date().toISOString().split("T")[0];
     onUpdateInvoices((prev) =>
       prev.map((inv) =>
-        inv.id === id
+        inv.id === invoice.id
           ? { ...inv, status: "Paid" as const, dueDaysOverdue: 0, dueLabel: "", paidDate }
           : inv
       )
@@ -140,14 +132,6 @@ export function InvoiceDashboard({
     toast({
       title: "Invoice marked as paid",
       description: "The invoice status has been updated.",
-    });
-  };
-
-  const handleSendReminder = (invoice: Invoice) => {
-    toast({
-      title: "Reminder feature",
-      description: "Enable Lovable Cloud to send email reminders.",
-      variant: "destructive",
     });
   };
 
@@ -159,51 +143,26 @@ export function InvoiceDashboard({
     });
   };
 
-  const handleDelete = (id: string) => {
-    onUpdateInvoices((prev) => prev.filter((inv) => inv.id !== id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+  const handleDelete = (invoice: Invoice) => {
+    onUpdateInvoices((prev) => prev.filter((inv) => inv.id !== invoice.id));
+    setSelectedIds((prev) => prev.filter((id) => id !== invoice.id));
     toast({
       title: "Invoice deleted",
       description: "The invoice has been removed.",
     });
   };
 
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedIds.size === filteredInvoices.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredInvoices.map((inv) => inv.id)));
-    }
-  };
-
   const handleBulkMarkPaid = () => {
     const paidDate = new Date().toISOString().split("T")[0];
-    const count = selectedIds.size;
+    const count = selectedIds.length;
     onUpdateInvoices((prev) =>
       prev.map((inv) =>
-        selectedIds.has(inv.id)
+        selectedIds.includes(inv.id)
           ? { ...inv, status: "Paid" as const, dueDaysOverdue: 0, dueLabel: "", paidDate }
           : inv
       )
     );
-    setSelectedIds(new Set());
-    setIsSelectMode(false);
+    setSelectedIds([]);
     toast({
       title: "Invoices marked as paid",
       description: `${count} invoice${count > 1 ? "s" : ""} marked as paid.`,
@@ -211,19 +170,13 @@ export function InvoiceDashboard({
   };
 
   const handleBulkDelete = () => {
-    const count = selectedIds.size;
-    onUpdateInvoices((prev) => prev.filter((inv) => !selectedIds.has(inv.id)));
-    setSelectedIds(new Set());
-    setIsSelectMode(false);
+    const count = selectedIds.length;
+    onUpdateInvoices((prev) => prev.filter((inv) => !selectedIds.includes(inv.id)));
+    setSelectedIds([]);
     toast({
       title: "Invoices deleted",
       description: `${count} invoice${count > 1 ? "s" : ""} deleted.`,
     });
-  };
-
-  const handleCancelSelect = () => {
-    setSelectedIds(new Set());
-    setIsSelectMode(false);
   };
 
   const handleEdit = (invoice: Invoice) => {
@@ -372,7 +325,7 @@ export function InvoiceDashboard({
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="space-y-4">
       <InvoiceFilters
         ref={searchInputRef}
         searchQuery={searchQuery}
@@ -382,55 +335,32 @@ export function InvoiceDashboard({
         sortOption={sortOption}
         onSortChange={setSortOption}
         counts={counts}
-        isSelectMode={isSelectMode}
-        onToggleSelectMode={() => setIsSelectMode(!isSelectMode)}
+        isSelectMode={selectedIds.length > 0}
+        onToggleSelectMode={() => setSelectedIds([])}
       />
 
-      {isSelectMode && filteredInvoices.length > 0 && (
+      {selectedIds.length > 0 && (
         <BulkActionsBar
-          selectedCount={selectedIds.size}
+          selectedCount={selectedIds.length}
           totalCount={filteredInvoices.length}
-          onSelectAll={handleSelectAll}
+          onSelectAll={() => setSelectedIds(filteredInvoices.map((inv) => inv.id))}
           onMarkPaid={handleBulkMarkPaid}
           onDelete={handleBulkDelete}
-          onCancel={handleCancelSelect}
+          onCancel={() => setSelectedIds([])}
         />
       )}
 
-      {filteredInvoices.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary mx-auto mb-4">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">No invoices found</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Try adjusting your search or filter
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredInvoices.map((invoice) => (
-            <InvoiceListItem
-              key={invoice.id}
-              invoice={invoice}
-              isSelectMode={isSelectMode}
-              isSelected={selectedIds.has(invoice.id)}
-              onToggleSelect={() => handleToggleSelect(invoice.id)}
-              onClick={() => {
-                if (!isSelectMode) {
-                  setSelectedInvoice(invoice);
-                  setView("detail");
-                }
-              }}
-              onEdit={handleEdit}
-              onMarkPaid={handleMarkPaid}
-              onSendReminder={handleSendReminder}
-              onDownloadPdf={handleDownloadPdf}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
+      <InvoiceTable
+        invoices={filteredInvoices}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onMarkAsPaid={handleMarkPaid}
+        onDownloadPdf={handleDownloadPdf}
+        sortOption={sortOption}
+        onSortChange={setSortOption}
+      />
     </div>
   );
 }
