@@ -74,15 +74,15 @@ function NavItem({ item, collapsed }: NavItemProps) {
         <NavLink
           to={item.url}
           className={cn(
-            "relative flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+            "relative flex items-center gap-3 px-3 py-3 rounded-md text-[28px] font-medium transition-colors",
             "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
             isActive && "text-sidebar-foreground bg-sidebar-accent"
           )}
         >
           {isActive && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-destructive rounded-r" />
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-destructive rounded-r" />
           )}
-          <item.icon className={cn("h-5 w-5 shrink-0", collapsed && "mx-auto")} />
+          <item.icon className={cn("h-7 w-7 shrink-0", collapsed && "mx-auto")} />
           {!collapsed && <span>{item.title}</span>}
         </NavLink>
       </SidebarMenuButton>
@@ -106,7 +106,7 @@ export function AppSidebar() {
               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                 <FileText className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="text-lg font-semibold text-sidebar-foreground">InvoiceApp</span>
+              <span className="text-2xl font-semibold text-sidebar-foreground">InvoiceApp</span>
             </div>
           )}
           <Button
@@ -182,7 +182,7 @@ export function AppSidebar() {
         {/* Billing Section */}
         <SidebarGroup className="mt-2">
           {!collapsed && (
-            <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+            <div className="px-3 py-2 text-sm font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
               Billing
             </div>
           )}
@@ -198,7 +198,7 @@ export function AppSidebar() {
         {/* Inventory Section */}
         <SidebarGroup className="mt-2">
           {!collapsed && (
-            <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+            <div className="px-3 py-2 text-sm font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
               Inventory
             </div>
           )}
@@ -214,7 +214,7 @@ export function AppSidebar() {
         {/* Tools Section */}
         <SidebarGroup className="mt-2">
           {!collapsed && (
-            <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+            <div className="px-3 py-2 text-sm font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
               Tools
             </div>
           )}
@@ -234,11 +234,11 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <button
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium w-full",
+                  "flex items-center gap-3 px-3 py-3 rounded-md text-[28px] font-medium w-full",
                   "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
               >
-                <HelpCircle className={cn("h-5 w-5 shrink-0", collapsed && "mx-auto")} />
+                <HelpCircle className={cn("h-7 w-7 shrink-0", collapsed && "mx-auto")} />
                 {!collapsed && <span>Help</span>}
               </button>
             </SidebarMenuButton>
@@ -247,11 +247,11 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <button
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium w-full",
+                  "flex items-center gap-3 px-3 py-3 rounded-md text-[28px] font-medium w-full",
                   "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
               >
-                <Settings className={cn("h-5 w-5 shrink-0", collapsed && "mx-auto")} />
+                <Settings className={cn("h-7 w-7 shrink-0", collapsed && "mx-auto")} />
                 {!collapsed && <span>Settings</span>}
               </button>
             </SidebarMenuButton>

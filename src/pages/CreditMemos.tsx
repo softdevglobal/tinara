@@ -82,7 +82,7 @@ const CreditMemos = () => {
             <CreditCard className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Credit Memos</h1>
+            <h1 className="text-[36px] font-semibold text-foreground">Credit Memos</h1>
             <p className="text-sm text-muted-foreground">Manage refunds and credits</p>
           </div>
         </div>
