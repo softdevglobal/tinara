@@ -29,22 +29,16 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-// Extended line item that can track source item
-interface ExtendedLineItem extends LineItem {
-  sourceItemId?: string;
-  unit?: string;
-  taxCode?: TaxCode;
-  discountType?: "PERCENT" | "AMOUNT";
-  discountValue?: number;
-  itemType?: "parts" | "labor";
-}
+// Note: LineItem from invoice-schema now includes all extended fields
+// This type alias is kept for backwards compatibility
+type ExtendedLineItem = LineItem;
 
 interface LineItemsEditorProps {
   form: UseFormReturn<InvoiceFormData>;
   lineItems: LineItem[];
   onAdd: () => void;
   onRemove: (index: number) => void;
-  onUpdate: (index: number, field: keyof LineItem, value: string | number) => void;
+  onUpdate: (index: number, field: keyof LineItem, value: LineItem[keyof LineItem]) => void;
   onAddFromCatalog?: (item: Item) => void;
   showValidationErrors?: boolean;
 }
@@ -82,16 +76,15 @@ export function LineItemsEditor({
   };
 
   const handleItemSelect = (index: number, item: Item) => {
-    // Auto-fill from selected catalog item
+    // Auto-fill from selected catalog item including extended properties
     onUpdate(index, "description", item.name);
     onUpdate(index, "unitPrice", centsToDollars(item.unitPriceCents));
     onUpdate(index, "quantity", item.defaultQty);
-    
-    // Also set extended properties if callback provided
-    if (onAddFromCatalog) {
-      // The onAddFromCatalog adds a new item, but we want to update existing
-      // So we'll handle it through onUpdate for the core fields
-    }
+    onUpdate(index, "itemCode", item.sku || "");
+    onUpdate(index, "sourceItemId", item.id);
+    onUpdate(index, "unit", item.unit);
+    onUpdate(index, "taxCode", item.taxCode || "NONE");
+    onUpdate(index, "itemType", item.category === "Labor" ? "labor" : "parts");
   };
 
   const handleAddNewItem = (index: number, searchText: string) => {
@@ -100,10 +93,15 @@ export function LineItemsEditor({
   };
 
   const handleQuickAddComplete = (index: number, item: Item) => {
-    // Populate line item with the newly created item
+    // Populate line item with the newly created item including extended properties
     onUpdate(index, "description", item.name);
     onUpdate(index, "unitPrice", centsToDollars(item.unitPriceCents));
     onUpdate(index, "quantity", item.defaultQty);
+    onUpdate(index, "itemCode", item.sku || "");
+    onUpdate(index, "sourceItemId", item.id);
+    onUpdate(index, "unit", item.unit);
+    onUpdate(index, "taxCode", item.taxCode || "NONE");
+    onUpdate(index, "itemType", item.category === "Labor" ? "labor" : "parts");
     setQuickAddIndex(null);
     setQuickAddName("");
   };
@@ -131,8 +129,9 @@ export function LineItemsEditor({
 
       {/* Header */}
       <div className="hidden sm:grid sm:grid-cols-12 gap-3 text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
-        <div className="col-span-5">Description</div>
-        <div className="col-span-2 text-center">Qty</div>
+        <div className="col-span-2">Item Code</div>
+        <div className="col-span-4">Description</div>
+        <div className="col-span-1 text-center">Qty</div>
         <div className="col-span-2 text-right">Unit Price</div>
         <div className="col-span-2 text-right">Total</div>
         <div className="col-span-1"></div>
@@ -163,7 +162,20 @@ export function LineItemsEditor({
               <div
                 className="grid grid-cols-1 sm:grid-cols-12 gap-3 p-3 rounded-t-lg bg-secondary/50 items-center"
               >
-                <div className="sm:col-span-5">
+                {/* Item Code */}
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-muted-foreground sm:hidden mb-1 block">
+                    Item Code
+                  </label>
+                  <Input
+                    placeholder="SKU/Code"
+                    value={extendedItem.itemCode || ""}
+                    onChange={(e) => onUpdate(index, "itemCode", e.target.value)}
+                    className="bg-card text-sm"
+                  />
+                </div>
+                {/* Description */}
+                <div className="sm:col-span-4">
                   <label className="text-xs text-muted-foreground sm:hidden mb-1 block">
                     Description
                   </label>
@@ -195,9 +207,10 @@ export function LineItemsEditor({
                     )}
                   </div>
                 </div>
-                <div className="sm:col-span-2">
+                {/* Quantity */}
+                <div className="sm:col-span-1">
                   <label className="text-xs text-muted-foreground sm:hidden mb-1 block">
-                    Quantity
+                    Qty
                   </label>
                   <Input
                     type="number"

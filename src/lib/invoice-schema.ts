@@ -1,10 +1,19 @@
 import { z } from "zod";
+import { TaxCode } from "./tax-utils";
 
 export const lineItemSchema = z.object({
   id: z.string(),
   description: z.string().min(1, "Description is required").max(200),
   quantity: z.number().min(1, "Quantity must be at least 1").max(9999),
   unitPrice: z.number().min(0, "Price must be positive").max(999999),
+  // Extended fields
+  itemCode: z.string().max(50).optional(),
+  sourceItemId: z.string().optional(),
+  unit: z.string().optional(),
+  taxCode: z.enum(["GST", "GST_FREE", "NONE"]).optional(),
+  discountType: z.enum(["PERCENT", "AMOUNT"]).optional(),
+  discountValue: z.number().min(0).optional(),
+  itemType: z.enum(["parts", "labor"]).optional(),
 });
 
 export const invoiceFormSchema = z.object({
