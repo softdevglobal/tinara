@@ -8,6 +8,7 @@ import { SettingsProvider } from "@/context/SettingsContext";
 import { DocumentCountersProvider } from "@/context/DocumentCountersContext";
 import { AutoInvoiceGenerator } from "@/components/AutoInvoiceGenerator";
 import Index from "./pages/Index";
+import Invoices from "./pages/Invoices";
 import Clients from "./pages/Clients";
 import Quotes from "./pages/Quotes";
 import RecurringInvoices from "./pages/RecurringInvoices";
@@ -40,6 +41,7 @@ function App() {
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Index />} />
+                  <Route path="/invoices" element={<Invoices />} />
                   <Route path="/quotes" element={<Quotes />} />
                   <Route path="/recurring" element={<RecurringInvoices />} />
                   <Route path="/clients" element={<Clients />} />

@@ -23,6 +23,8 @@ interface InvoiceDashboardProps {
   onAddClient: (client: Client) => void;
   showNewForm?: boolean;
   onCloseNewForm?: () => void;
+  editInvoiceId?: string | null;
+  onClearEditInvoiceId?: () => void;
 }
 
 function sortInvoices(invoices: Invoice[], sortOption: InvoiceSortOption): Invoice[] {
@@ -59,6 +61,8 @@ export function InvoiceDashboard({
   onAddClient,
   showNewForm,
   onCloseNewForm,
+  editInvoiceId,
+  onClearEditInvoiceId,
 }: InvoiceDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -94,7 +98,19 @@ export function InvoiceDashboard({
     if (showNewForm && view !== "new") {
       setView("new");
     }
-  }, [showNewForm]);
+  }, [showNewForm, view]);
+
+  // Handle edit invoice by ID from URL
+  useEffect(() => {
+    if (editInvoiceId && view === "list") {
+      const invoiceToEdit = invoices.find((inv) => inv.id === editInvoiceId);
+      if (invoiceToEdit) {
+        setEditingInvoice(invoiceToEdit);
+        setView("edit");
+        onClearEditInvoiceId?.();
+      }
+    }
+  }, [editInvoiceId, invoices, view, onClearEditInvoiceId]);
 
   const counts = useMemo(
     () => ({
