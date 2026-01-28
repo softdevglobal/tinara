@@ -66,6 +66,21 @@ export function ClientSelector({
           <CommandList>
             <CommandEmpty>No client found.</CommandEmpty>
             <CommandGroup>
+              <CommandItem
+                onSelect={() => {
+                  onAddNew();
+                  setOpen(false);
+                }}
+                className="flex items-center gap-3 py-3 text-primary"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                  <Plus className="h-4 w-4 text-primary" />
+                </div>
+                <span className="font-medium">Add new client</span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup>
               {clients.map((client) => (
                 <CommandItem
                   key={client.id}
@@ -95,21 +110,6 @@ export function ClientSelector({
                   />
                 </CommandItem>
               ))}
-            </CommandGroup>
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem
-                onSelect={() => {
-                  onAddNew();
-                  setOpen(false);
-                }}
-                className="flex items-center gap-3 py-3 text-primary"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                  <Plus className="h-4 w-4 text-primary" />
-                </div>
-                <span className="font-medium">Add new client</span>
-              </CommandItem>
             </CommandGroup>
           </CommandList>
         </Command>
