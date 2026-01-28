@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Quote, QuoteSortOption } from "@/data/quotes";
 import { Invoice } from "@/data/invoices";
 import { Client } from "@/data/clients";
@@ -68,6 +69,13 @@ export function QuoteDashboard({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { toast } = useToast();
   const { brandingSettings } = useApp();
+  const navigate = useNavigate();
+
+  // Handler to view invoice from converted quote
+  const handleViewInvoice = (invoiceId: string) => {
+    // Navigate to invoices page - could be enhanced to open specific invoice
+    navigate("/invoices");
+  };
 
   // Sync with prop
   useEffect(() => {
@@ -199,6 +207,7 @@ export function QuoteDashboard({
         onDelete={handleDelete}
         onConvertToInvoice={onConvertToInvoice}
         onDownloadPdf={handleDownloadPdf}
+        onViewInvoice={handleViewInvoice}
         sortOption={sortOption}
         onSortChange={setSortOption}
       />
