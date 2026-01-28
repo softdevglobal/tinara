@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Switch } from "@/components/ui/switch";
+import { ClientSelector } from "./ClientSelector";
+import { NewClientForm } from "./NewClientForm";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -98,6 +100,8 @@ export function EnhancedQuoteForm({
   const [depositValue, setDepositValue] = useState(25);
   const [depositDueDate, setDepositDueDate] = useState(new Date().toISOString().split("T")[0]);
   const [addToFutureEstimates, setAddToFutureEstimates] = useState(true);
+  const [showNewClientForm, setShowNewClientForm] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
@@ -110,7 +114,35 @@ export function EnhancedQuoteForm({
     },
   });
 
-  const selectedClient = clients.find((c) => c.id === form.watch("clientId"));
+  // Update selected client when form value changes
+  useEffect(() => {
+    const clientId = form.watch("clientId");
+    if (clientId) {
+      const client = clients.find((c) => c.id === clientId);
+      setSelectedClient(client || null);
+    }
+  }, [form.watch("clientId"), clients]);
+
+  // Handle client selection
+  const handleClientSelect = (client: Client | null) => {
+    setSelectedClient(client);
+    if (client) {
+      form.setValue("clientId", client.id);
+    } else {
+      form.setValue("clientId", "");
+    }
+  };
+
+  // Handle adding new client
+  const handleAddNewClient = (client: Client) => {
+    onAddClient(client);
+    handleClientSelect(client);
+    setShowNewClientForm(false);
+    toast({
+      title: "Client added",
+      description: `${client.company || client.name} has been added to your clients.`,
+    });
+  };
 
   // Calculate totals
   const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -272,33 +304,36 @@ export function EnhancedQuoteForm({
                     <div className="bg-muted/50 px-4 py-2 border-b">
                       <span className="text-sm font-medium">Client</span>
                     </div>
-                    <div className="p-4">
+                    <div className="p-4 space-y-4">
+                      <ClientSelector
+                        clients={clients}
+                        selectedClient={selectedClient}
+                        onSelect={handleClientSelect}
+                        onAddNew={() => setShowNewClientForm(true)}
+                      />
+
+                      {showNewClientForm && (
+                        <NewClientForm
+                          onSubmit={handleAddNewClient}
+                          onCancel={() => setShowNewClientForm(false)}
+                        />
+                      )}
+
+                      {/* Hidden form field for validation */}
                       <FormField
                         control={form.control}
                         name="clientId"
                         render={({ field }) => (
-                          <FormItem>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="border-0 shadow-none p-0 h-auto text-primary">
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    <SelectValue placeholder="Add a client" />
-                                  </div>
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {clients.map((client) => (
-                                  <SelectItem key={client.id} value={client.id}>
-                                    {client.company || client.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
+                          <input type="hidden" {...field} />
                         )}
                       />
+
+                      {selectedClient && (
+                        <div className="text-sm text-muted-foreground bg-secondary/50 rounded-lg p-3">
+                          <p><strong>Email:</strong> {selectedClient.email}</p>
+                          {selectedClient.phone && <p><strong>Phone:</strong> {selectedClient.phone}</p>}
+                        </div>
+                      )}
                     </div>
                   </div>
 
