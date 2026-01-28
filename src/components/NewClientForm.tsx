@@ -107,7 +107,7 @@ export function NewClientForm({ onSubmit, onCancel }: NewClientFormProps) {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <div className="space-y-4">
           {/* Contact Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
@@ -332,11 +332,19 @@ export function NewClientForm({ onSubmit, onCancel }: NewClientFormProps) {
             <Button type="button" variant="outline" size="sm" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" size="sm">
+            <Button 
+              type="button" 
+              size="sm" 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                form.handleSubmit(handleSubmit)();
+              }}
+            >
               Add Client
             </Button>
           </div>
-        </form>
+        </div>
       </Form>
     </div>
   );
