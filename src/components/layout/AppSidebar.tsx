@@ -1,4 +1,19 @@
-import { Home, Users, FileText, ClipboardList, Repeat, Plus, Settings, ChevronLeft } from "lucide-react";
+import { 
+  Home, 
+  Users, 
+  FileText, 
+  ClipboardList, 
+  Repeat, 
+  Plus, 
+  Settings, 
+  ChevronLeft,
+  FolderKanban,
+  Package,
+  Receipt,
+  CreditCard,
+  Clock,
+  HelpCircle,
+} from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -24,15 +39,23 @@ import {
 const mainNavItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Clients", url: "/clients", icon: Users },
+  { title: "Projects", url: "/projects", icon: FolderKanban },
 ];
 
 const billingNavItems = [
   { title: "Invoices", url: "/invoices", icon: FileText },
   { title: "Quotes", url: "/quotes", icon: ClipboardList },
+  { title: "Credit Memos", url: "/credit-memos", icon: CreditCard },
 ];
 
-const automationNavItems = [
+const inventoryNavItems = [
+  { title: "Items", url: "/items", icon: Package },
+  { title: "Expenses", url: "/expenses", icon: Receipt },
+];
+
+const toolsNavItems = [
   { title: "Recurring", url: "/recurring", icon: Repeat },
+  { title: "Time Tracking", url: "/time-tracking", icon: Clock },
 ];
 
 interface NavItemProps {
@@ -129,6 +152,18 @@ export function AppSidebar() {
                 New Client
               </NavLink>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <NavLink to="/projects?new=project" className="flex items-center gap-2">
+                <FolderKanban className="h-4 w-4" />
+                New Project
+              </NavLink>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <NavLink to="/credit-memos?new=credit-memo" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                New Credit Memo
+              </NavLink>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarHeader>
@@ -161,16 +196,32 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Automation Section */}
+        {/* Inventory Section */}
         <SidebarGroup className="mt-2">
           {!collapsed && (
             <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-              Automation
+              Inventory
             </div>
           )}
           <SidebarGroupContent>
             <SidebarMenu>
-              {automationNavItems.map((item) => (
+              {inventoryNavItems.map((item) => (
+                <NavItem key={item.title} item={item} collapsed={collapsed} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Tools Section */}
+        <SidebarGroup className="mt-2">
+          {!collapsed && (
+            <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+              Tools
+            </div>
+          )}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {toolsNavItems.map((item) => (
                 <NavItem key={item.title} item={item} collapsed={collapsed} />
               ))}
             </SidebarMenu>
@@ -180,6 +231,19 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-4 mt-auto">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <button
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium w-full",
+                  "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                )}
+              >
+                <HelpCircle className={cn("h-5 w-5 shrink-0", collapsed && "mx-auto")} />
+                {!collapsed && <span>Help</span>}
+              </button>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <button
