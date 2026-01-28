@@ -70,7 +70,7 @@ const Projects = () => {
             <FolderKanban className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-[36px] font-semibold text-foreground">Projects</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Projects</h1>
             <p className="text-sm text-muted-foreground">Organize your work</p>
           </div>
         </div>
