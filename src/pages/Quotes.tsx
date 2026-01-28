@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClipboardList, Plus, Download } from "lucide-react";
 import { QuoteDashboard } from "@/components/QuoteDashboard";
 import { AppLayout } from "@/components/AppLayout";
@@ -26,6 +26,13 @@ const Quotes = () => {
   const [taxYearFilter, setTaxYearFilter] = useState<string>("all");
   const { quotes, clients, projects, setQuotes, addClient, setInvoices } = useApp();
   const { toast } = useToast();
+
+  // Sync showNewForm with URL parameter changes (SPA navigation)
+  useEffect(() => {
+    if (showNewFromUrl) {
+      setShowNewForm(true);
+    }
+  }, [showNewFromUrl]);
 
   const handleExportQuotes = () => {
     exportQuotesToCSV(quotes);
