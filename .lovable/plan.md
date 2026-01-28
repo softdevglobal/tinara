@@ -1,425 +1,213 @@
 
-
-# Complete Invoice/Estimate Line Items Persistence Implementation
+# Fix Invoice Creation & New Client Flow
 
 ## Executive Summary
 
-This plan addresses critical business logic gaps where invoices and estimates currently save only a `total` number but discard all line item details. This makes auditing, editing, and re-sending impossible. We will implement proper document persistence with `DocumentLineItem[]` as the single source of truth.
+Invoice creation is broken due to a React state synchronization bug where URL query parameters (`?new=invoice`) don't properly trigger the new invoice form to display after initial page load. Additionally, there are form validation issues that silently block submission.
 
 ---
 
-## Current State Analysis
+## Root Cause Analysis
 
-| Component | Current Problem | Impact |
-|-----------|----------------|--------|
-| Invoice model | Only stores `total: number` | Cannot audit, edit, or prove anything |
-| Quote model | Only stores `total: number` | Same issue |
-| InvoiceTotals | Uses global `taxRate * subtotal` | Ignores per-line tax codes |
-| LineItemsEditor | Uses `ExtendedLineItem` (dollars) | Schema disconnect with `DocumentLineItem` (cents) |
-| isItemReferenced | Always returns `false` | Allows hard-delete of referenced items (data corruption) |
-| Save handlers | Discards `lineItems` array | Line items lost on save |
+### Issue 1: URL Parameter Not Triggering Form Display
+
+**Location:** `src/pages/Index.tsx`
+
+**Problem:** The component uses `useState` to initialize `showNewForm` from URL parameters, but `useState` only runs on initial mount. When navigating via React Router (SPA navigation), the component doesn't remount, so the state doesn't update.
+
+```text
+// Current (broken):
+const showNewFromUrl = searchParams.get("new") === "invoice";
+const [showNewForm, setShowNewForm] = useState(showNewFromUrl);
+// showNewForm stays false even when URL changes to ?new=invoice
+```
+
+**Fix:** Add a `useEffect` to sync state when URL parameters change:
+
+```text
+useEffect(() => {
+  if (showNewFromUrl) {
+    setShowNewForm(true);
+  }
+}, [showNewFromUrl]);
+```
+
+---
+
+### Issue 2: Form Validation Silently Blocking Submission
+
+**Location:** `src/lib/invoice-schema.ts` and `src/components/NewInvoiceForm.tsx`
+
+**Problem:** The form schema requires:
+- `description` to have at least 1 character (line 5: `z.string().min(1, "Description is required")`)
+- At least one line item (line 16: `.min(1, "At least one line item is required")`)
+
+When the user clicks "Create Invoice" with an empty description, the form silently fails validation. No error message is shown because the validation happens on the form schema level but the UI doesn't highlight the line item errors.
+
+**Fix:** 
+1. Add explicit validation feedback for line items in the UI
+2. Show error messages on incomplete line items
+3. Add visual indication of which fields are invalid
+
+---
+
+### Issue 3: InvoiceDashboard Calling setState During Render
+
+**Location:** `src/components/InvoiceDashboard.tsx` (lines 93-95)
+
+**Problem:** Calling `setView` during render is a React anti-pattern that can cause issues:
+
+```text
+// Current (problematic):
+if (showNewForm && view !== "new") {
+  setView("new");
+}
+```
+
+**Fix:** Move this synchronization logic to a `useEffect`:
+
+```text
+useEffect(() => {
+  if (showNewForm && view !== "new") {
+    setView("new");
+  }
+}, [showNewForm]);
+```
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Upgrade Invoice Data Model (Critical)
+### Phase 1: Fix URL Parameter Synchronization
 
-**File: `src/data/invoices.ts`**
+**File: `src/pages/Index.tsx`**
 
-Update the Invoice interface to persist line items:
-
-```text
-interface Invoice {
-  id: string;
-  number: string;
-  clientName: string;
-  clientEmail?: string;
-  projectName: string;
-  date: string;
-  dueDate: string;
-  dueDaysOverdue: number;
-  dueLabel: string;
-  status: "Opened" | "Paid" | "Overdue";
-  currency: string;
-  paidDate?: string;
-  notes?: string;
-
-  // NEW: Line items as immutable snapshots
-  lineItems: DocumentLineItem[];
-
-  // NEW: Computed totals (stored for performance)
-  totals: {
-    subtotalCents: number;
-    discountCents: number;
-    taxCents: number;
-    totalCents: number;
-  };
-
-  // DEPRECATED: Keep for backwards compat
-  total?: number;  // Will be removed later
-}
-```
-
-Migration for existing invoices:
-- If `lineItems` is undefined, mark as legacy
-- Display: "Line item breakdown unavailable (legacy record)"
-
-**File: `src/data/quotes.ts`**
-
-Same changes for Quote interface.
-
----
-
-### Phase 2: Create DocumentLineItem-Based Form State
-
-**Update: `src/components/LineItemsEditor.tsx`**
-
-The editor should work with `DocumentLineItem` directly:
-
-- Remove `ExtendedLineItem` type
-- Form state holds `DocumentLineItem[]`
-- Unit price input: display dollars, store `unitPriceCentsSnapshot`
-- Tax code: dropdown per line (GST / GST Free / None)
-- Discount: optional fields `discountType` + `discountValue`
-
-Input conversion flow:
-```text
-User types: $150.00
--> displayToCents("150.00") = 15000
--> stored as unitPriceCentsSnapshot: 15000
-
-Display:
--> centsToInputValue(15000) = "150.00"
-```
-
-Props change:
-```text
-interface LineItemsEditorProps {
-  lineItems: DocumentLineItem[];
-  documentId: string;
-  onUpdate: (lineItems: DocumentLineItem[]) => void;
-}
-```
-
----
-
-### Phase 3: Replace InvoiceTotals with calculateDocumentTotals
-
-**Update: `src/components/InvoiceTotals.tsx`**
-
-Remove the global `taxRate` input entirely.
-
-New props:
-```text
-interface InvoiceTotalsProps {
-  lineItems: DocumentLineItem[];
-}
-```
-
-Component behavior:
-1. Call `calculateDocumentTotals(lineItems)` from `tax-utils.ts`
-2. Display:
-   - Subtotal (sum of line bases)
-   - Discounts (if any)
-   - Tax (with breakdown by code if mixed)
-   - Total
-3. All values converted from cents to display using `centsToDisplay()`
-
-Remove this bug pattern:
-```text
-// DELETE THIS EVERYWHERE
-const taxAmount = subtotal * (taxRate / 100);
-```
-
----
-
-### Phase 4: Update Invoice Save Handler
-
-**Update: `src/components/InvoiceDashboard.tsx`**
-
-In `handleCreateInvoice()` and `handleUpdateInvoice()`:
+1. Add `useEffect` import if not present
+2. Add effect to sync `showNewForm` with URL parameter changes:
 
 ```text
-const handleCreateInvoice = (data: InvoiceFormData, lineItems: DocumentLineItem[]) => {
-  const totals = calculateDocumentTotals(lineItems);
-
-  const newInvoice: Invoice = {
-    id: `inv_${Date.now()}`,
-    number: `A${Date.now().toString().slice(-8)}`,
-    clientName: data.clientName,
-    clientEmail: data.clientEmail,
-    projectName: data.projectName || "",
-    date: data.issueDate.toISOString().split("T")[0],
-    dueDate: data.dueDate.toISOString().split("T")[0],
-    dueDaysOverdue: 0,
-    dueLabel: `Due in ${daysDiff} days`,
-    status: "Opened",
-    currency: "AUD",
-    notes: data.notes,
-
-    // Persist the full line items
-    lineItems: lineItems,
-
-    // Store computed totals
-    totals: {
-      subtotalCents: totals.subtotalCents,
-      discountCents: totals.discountCents,
-      taxCents: totals.taxCents,
-      totalCents: totals.totalCents,
-    },
-  };
-
-  onUpdateInvoices((prev) => [newInvoice, ...prev]);
-};
-```
-
----
-
-### Phase 5: Update NewInvoiceForm to Use DocumentLineItem
-
-**Update: `src/components/NewInvoiceForm.tsx`**
-
-Major changes:
-1. Remove `ExtendedLineItem` type
-2. State: `const [lineItems, setLineItems] = useState<DocumentLineItem[]>([]);`
-3. Initialize with one empty DocumentLineItem
-4. Remove global `taxRate` state
-5. Pass `lineItems` to `InvoiceTotals`
-6. On submit, pass `lineItems` to parent handler
-
-Default empty line item:
-```text
-const createEmptyLineItem = (documentId: string, sortOrder: number): DocumentLineItem => ({
-  id: generateId(),
-  documentId,
-  nameSnapshot: "",
-  unitSnapshot: "unit",
-  unitPriceCentsSnapshot: 0,
-  qty: 1,
-  discountType: "NONE",
-  discountValue: 0,
-  taxCodeSnapshot: "GST",
-  sortOrder,
-});
-```
-
-When editing an existing invoice:
-- Load `invoice.lineItems` directly into form state
-- If legacy invoice (no lineItems), show "Legacy record" message
-
----
-
-### Phase 6: Update ItemPicker to Create Full Snapshots
-
-**Update: `src/components/ItemPicker.tsx`**
-
-When an item is selected, create a complete `DocumentLineItem`:
-
-```text
-const createSnapshotFromItem = (
-  item: Item,
-  documentId: string,
-  sortOrder: number
-): DocumentLineItem => ({
-  id: generateId(),
-  documentId,
-  sourceItemId: item.id,  // Link to catalog
-  nameSnapshot: item.name,
-  descriptionSnapshot: item.description,
-  unitSnapshot: item.unit,
-  unitPriceCentsSnapshot: item.unitPriceCents,
-  qty: item.defaultQty,
-  discountType: "NONE",
-  discountValue: 0,
-  taxCodeSnapshot: item.taxCode,
-  sortOrder,
-});
-```
-
----
-
-### Phase 7: Implement Real Reference Tracking
-
-**Update: `src/context/AppContext.tsx`**
-
-Replace the stubbed `isItemReferenced()`:
-
-```text
-const isItemReferenced = (itemId: string): boolean => {
-  // Check invoices
-  const inInvoices = invoices.some(
-    (inv) => inv.lineItems?.some((li) => li.sourceItemId === itemId)
-  );
-
-  // Check quotes
-  const inQuotes = quotes.some(
-    (q) => q.lineItems?.some((li) => li.sourceItemId === itemId)
-  );
-
-  return inInvoices || inQuotes;
-};
-
-const getItemReferenceCount = (itemId: string): number => {
-  let count = 0;
-
-  for (const inv of invoices) {
-    count += (inv.lineItems || []).filter((li) => li.sourceItemId === itemId).length;
+useEffect(() => {
+  if (showNewFromUrl && !showNewForm) {
+    setShowNewForm(true);
   }
-
-  for (const q of quotes) {
-    count += (q.lineItems || []).filter((li) => li.sourceItemId === itemId).length;
-  }
-
-  return count;
-};
+}, [showNewFromUrl]);
 ```
 
-This makes delete behavior correct:
-- If referenced: archive only (set `isActive = false`)
-- If never referenced: hard delete allowed
+### Phase 2: Fix InvoiceDashboard setState in Render
 
----
+**File: `src/components/InvoiceDashboard.tsx`**
 
-### Phase 8: Update Quote/Estimate Form
+1. Remove the inline `if` statement that sets state during render
+2. Add `useEffect` to handle sync:
 
-**Update: `src/components/EnhancedQuoteForm.tsx`**
+```text
+// Remove this (lines 93-95):
+if (showNewForm && view !== "new") {
+  setView("new");
+}
 
-Apply same changes as invoice form:
-1. Use `DocumentLineItem[]` for line items state
-2. Remove local `QuoteLineItem` type
-3. Use `calculateDocumentTotals()` for totals
-4. Persist `lineItems` and `totals` on save
+// Add useEffect instead:
+useEffect(() => {
+  if (showNewForm) {
+    setView("new");
+  }
+}, [showNewForm]);
+```
 
----
+### Phase 3: Improve Line Item Validation UX
 
-### Phase 9: Update View Invoice/Quote Display
+**File: `src/components/LineItemsEditor.tsx`**
 
-**Update: `src/components/InvoiceCard.tsx`** (and similar)
+1. Add visual feedback for invalid line items (empty description, zero quantity)
+2. Show red border on input fields that are invalid
+3. Add inline error messages
 
-When viewing an invoice:
-- If `invoice.lineItems` exists: render the line items table
-- If `invoice.lineItems` is undefined: show "Line item breakdown unavailable (legacy record)"
-- Edit button opens form with persisted line items
+**File: `src/components/NewInvoiceForm.tsx`**
+
+1. Add validation check before submit that shows user-friendly error messages
+2. Highlight incomplete line items when validation fails
+3. Show toast notification explaining what's wrong
+
+### Phase 4: Fix Quotes Page Same Issue
+
+**File: `src/pages/Quotes.tsx`**
+
+Apply the same `useEffect` fix for URL parameter synchronization:
+
+```text
+useEffect(() => {
+  if (showNewFromUrl && !showNewForm) {
+    setShowNewForm(true);
+  }
+}, [showNewFromUrl]);
+```
 
 ---
 
 ## Summary of File Changes
 
-### Files to Update (10 files)
+### Files to Update (4 files)
 
-1. `src/data/invoices.ts`
-   - Add `lineItems: DocumentLineItem[]` and `totals` object
-   - Add migration helper for legacy records
+1. **`src/pages/Index.tsx`**
+   - Add `useEffect` to sync `showNewForm` with URL params
+   - Ensure form displays when navigating to `/?new=invoice`
 
-2. `src/data/quotes.ts`
-   - Same changes as invoices
+2. **`src/components/InvoiceDashboard.tsx`**
+   - Move setState out of render into `useEffect`
+   - Add `useEffect` dependency array
 
-3. `src/components/LineItemsEditor.tsx`
-   - Use `DocumentLineItem` directly
-   - Convert display/storage with money utils
-   - Add per-line tax code dropdown
+3. **`src/components/NewInvoiceForm.tsx`**
+   - Add line item validation feedback before submit
+   - Show error toast with specific validation errors
+   - Highlight invalid line items
 
-4. `src/components/InvoiceTotals.tsx`
-   - Remove `taxRate` prop
-   - Accept `DocumentLineItem[]`
-   - Use `calculateDocumentTotals()`
-
-5. `src/components/NewInvoiceForm.tsx`
-   - Remove `ExtendedLineItem` type
-   - State holds `DocumentLineItem[]`
-   - Remove global `taxRate` state
-   - Pass line items to save handler
-
-6. `src/components/InvoiceDashboard.tsx`
-   - Update `handleCreateInvoice` to persist line items
-   - Update `handleUpdateInvoice` to persist line items
-
-7. `src/components/EnhancedQuoteForm.tsx`
-   - Same changes as invoice form
-
-8. `src/context/AppContext.tsx`
-   - Implement real `isItemReferenced()`
-   - Implement real `getItemReferenceCount()`
-
-9. `src/components/ItemPicker.tsx`
-   - Create full `DocumentLineItem` snapshots
-
-10. `src/components/InvoiceCard.tsx`
-    - Display line items from persisted data
-
-### Files Already Complete (no changes needed)
-
-- `src/lib/line-item-schema.ts` - DocumentLineItem interface exists
-- `src/lib/tax-utils.ts` - calculateDocumentTotals() exists
-- `src/lib/money-utils.ts` - Conversion utilities exist
+4. **`src/pages/Quotes.tsx`**
+   - Apply same `useEffect` fix for URL parameter sync
 
 ---
 
-## Technical Architecture After Implementation
+## Technical Details
+
+### React State Synchronization Pattern
+
+The correct pattern for syncing state with URL parameters:
 
 ```text
-+------------------+           +---------------------+
-|  Item Catalogue  |           |  NewInvoiceForm     |
-|------------------|           |---------------------|
-| unitPriceCents   |  ------>  | DocumentLineItem[]  |
-| taxCode          |  snapshot | (cents, taxCode)    |
-| unit             |           +----------+----------+
-+------------------+                      |
-                                          | save
-                                          v
-                        +--------------------------------+
-                        |  Invoice (persisted)           |
-                        |--------------------------------|
-                        | lineItems: DocumentLineItem[]  |
-                        | totals: { subtotalCents, ... } |
-                        +--------------------------------+
-                                          |
-                                          | read
-                                          v
-                        +--------------------------------+
-                        |  InvoiceCard / Edit Form       |
-                        |--------------------------------|
-                        | Renders from lineItems         |
-                        | Full audit trail available     |
-                        +--------------------------------+
+// URL parameter as derived value
+const [searchParams] = useSearchParams();
+const showNewFromUrl = searchParams.get("new") === "invoice";
+
+// Local state for form visibility
+const [showNewForm, setShowNewForm] = useState(showNewFromUrl);
+
+// Sync when URL changes (SPA navigation)
+useEffect(() => {
+  if (showNewFromUrl) {
+    setShowNewForm(true);
+  }
+}, [showNewFromUrl]);
 ```
 
----
+### Validation Error Display
 
-## Migration Strategy for Existing Data
+When "Create Invoice" is clicked with invalid data:
 
-Existing mock invoices without lineItems:
-1. Keep them as-is (backwards compatible)
-2. Add a check: `if (!invoice.lineItems)`
-3. Display: "This is a legacy invoice. Line item details are unavailable."
-4. Editing creates new lineItems array
-
-No data loss, no breaking changes to existing records.
-
----
-
-## Validation Rules
-
-On invoice/estimate save:
-1. At least one line item required
-2. Each line item:
-   - `nameSnapshot` required (min 1 char)
-   - `qty` must be > 0
-   - `unitPriceCentsSnapshot` must be >= 0
-   - `taxCodeSnapshot` must be valid enum
-3. Total can be 0 (e.g., pro-bono work) but warn user
+1. Check if any line item has empty `description`
+2. Check if any line item has `quantity <= 0`  
+3. Check if no client is selected
+4. If any validation fails:
+   - Show toast with clear message: "Please fill in all required fields"
+   - Scroll to first invalid field
+   - Add red border to invalid inputs
 
 ---
 
 ## Expected Outcome
 
 After implementation:
-1. Every invoice/estimate persists its complete line items
-2. Editing loads the exact line items that were saved
-3. PDF generation uses actual saved line items
-4. Item catalog tracks real usage (no false delete)
-5. Per-line tax codes calculate correctly
-6. All money stored in cents with line-level rounding
-7. Legacy records display gracefully without errors
 
+1. Clicking "+ Create → New Invoice" correctly shows the invoice form
+2. URL `/?new=invoice` properly displays the new invoice form on navigation
+3. Form validation shows clear error messages for incomplete line items
+4. Users can create new clients inline when creating invoices
+5. Same fixes applied to Quotes page for consistency
