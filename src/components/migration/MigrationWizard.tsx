@@ -322,9 +322,9 @@ export function MigrationWizard({ source, onClose, onCompleted }: MigrationWizar
         organisation_id: currentOrgId,
         batch_id: batch.id,
         row_index: row.rowIndex,
-        raw_data: row.raw,
-        parsed_data: row.parsed,
-        errors: row.errors.length ? { messages: row.errors } : null,
+        raw_data: row.raw as Record<string, string>,
+        parsed_data: row.parsed as Record<string, unknown> as never,
+        errors: row.errors.length ? ({ messages: row.errors } as never) : null,
         status: row.errors.length
           ? "error"
           : row.isDuplicate && duplicateRule === "skip"
