@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Invoices from "./pages/Invoices";
 import Clients from "./pages/Clients";
+import ClientDetail from "./pages/ClientDetail";
 import Quotes from "./pages/Quotes";
 import RecurringInvoices from "./pages/RecurringInvoices";
 import Projects from "./pages/Projects";
@@ -56,6 +57,7 @@ function App() {
                     <Route path="/quotes" element={<ProtectedRoute><Quotes /></ProtectedRoute>} />
                     <Route path="/recurring" element={<ProtectedRoute><RecurringInvoices /></ProtectedRoute>} />
                     <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
+                    <Route path="/clients/:id" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
                     <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
                     <Route path="/items" element={<ProtectedRoute><Items /></ProtectedRoute>} />
                     <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
