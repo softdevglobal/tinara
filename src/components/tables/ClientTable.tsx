@@ -135,7 +135,7 @@ export function ClientTable({
                   <TableCell className="text-muted-foreground">
                     {client.company || "-"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <a
                       href={`mailto:${client.email}`}
                       className="text-primary hover:underline"
@@ -156,7 +156,7 @@ export function ClientTable({
                       {balance > 0 ? formatCurrency(balance) : "-"}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -164,6 +164,9 @@ export function ClientTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/clients/${client.id}`)}>
+                          View details
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onEdit?.(client)}>
                           Edit
                         </DropdownMenuItem>
