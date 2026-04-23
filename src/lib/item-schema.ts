@@ -9,13 +9,20 @@ export const itemFormSchema = z.object({
   category: z.enum(["Parts", "Labor", "Services", "Other"], {
     required_error: "Category is required",
   }),
+  itemType: z.enum(["product", "service", "labor", "fee"], {
+    required_error: "Item type is required",
+  }),
   unitPriceCents: z.number().int().min(0, "Price must be 0 or greater").max(99999999, "Price too high"),
+  costCents: z.number().int().min(0, "Cost must be 0 or greater").max(99999999, "Cost too high").default(0),
   unit: z.string().min(1, "Unit is required").max(50),
   taxCode: z.enum(["GST", "GST_FREE", "NONE"], {
     required_error: "Tax code is required",
   }),
   defaultQty: z.number().min(1, "Default quantity must be at least 1").max(9999).default(1),
   sku: z.string().max(50, "SKU must be less than 50 characters").optional(),
+  supplier: z.string().max(100, "Supplier must be less than 100 characters").optional(),
+  stockOnHand: z.number().min(0, "Stock cannot be negative").max(9999999).default(0),
+  reorderThreshold: z.number().min(0).max(9999999).optional(),
 });
 
 export type ItemFormData = z.infer<typeof itemFormSchema>;
@@ -44,4 +51,14 @@ export const CATEGORY_OPTIONS = [
   { value: "Labor", label: "Labor" },
   { value: "Services", label: "Services" },
   { value: "Other", label: "Other" },
+] as const;
+
+/**
+ * Item type options
+ */
+export const ITEM_TYPE_OPTIONS = [
+  { value: "product", label: "Product (tracks stock)" },
+  { value: "service", label: "Service" },
+  { value: "labor", label: "Labor" },
+  { value: "fee", label: "Fee" },
 ] as const;

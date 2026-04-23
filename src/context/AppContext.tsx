@@ -4,7 +4,7 @@ import { clients as initialClients, Client } from "@/data/clients";
 import { quotes as initialQuotes, Quote } from "@/data/quotes";
 import { recurringInvoices as initialRecurringInvoices, RecurringInvoice } from "@/data/recurring-invoices";
 import { projects as initialProjects, Project } from "@/data/projects";
-import { items as initialItems, Item } from "@/data/items";
+import { items as initialItems, inventoryMovements as initialMovements, Item, InventoryMovement } from "@/data/items";
 import { expenses as initialExpenses, Expense } from "@/data/expenses";
 import { creditMemos as initialCreditMemos, CreditMemo } from "@/data/credit-memos";
 import { timeEntries as initialTimeEntries, TimeEntry } from "@/data/time-entries";
@@ -42,6 +42,9 @@ interface AppState {
   deleteItem: (id: string) => void;
   isItemReferenced: (id: string) => boolean;
   getItemReferenceCount: (id: string) => number;
+  // Inventory
+  inventoryMovements: InventoryMovement[];
+  adjustStock: (itemId: string, qtyDelta: number, reason: string, movementType?: InventoryMovement["movementType"]) => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -57,6 +60,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [creditMemos, setCreditMemos] = useState<CreditMemo[]>(initialCreditMemos);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(initialTimeEntries);
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>(defaultBrandingSettings);
+  const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>(initialMovements);
 
   // Client helpers
   const addClient = (client: Client) => {
@@ -144,6 +148,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return count;
   };
 
+  /**
+   * Adjust stock for an item and record a movement
+   */
+  const adjustStock = (
+    itemId: string,
+    qtyDelta: number,
+    reason: string,
+    movementType: InventoryMovement["movementType"] = "adjustment"
+  ) => {
+    const now = new Date().toISOString();
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId
+          ? { ...it, stockOnHand: Math.max(0, (it.stockOnHand ?? 0) + qtyDelta), updatedAt: now }
+          : it
+      )
+    );
+    setInventoryMovements((prev) => [
+      {
+        id: `mov_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        itemId,
+        movementType,
+        qtyDelta,
+        reason,
+        createdAt: now,
+      },
+      ...prev,
+    ]);
+  };
+
   const value: AppState = {
     invoices,
     clients,
@@ -176,6 +210,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteItem,
     isItemReferenced,
     getItemReferenceCount,
+    // Inventory
+    inventoryMovements,
+    adjustStock,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

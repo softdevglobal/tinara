@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { MoreHorizontal, ArrowUpDown, Archive } from "lucide-react";
-import { Item } from "@/data/items";
+import { MoreHorizontal, ArrowUpDown, Archive, Package, AlertTriangle, XCircle, Boxes } from "lucide-react";
+import { Item, getStockStatus, calculateMarginPercent } from "@/data/items";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,9 +29,10 @@ interface ItemTableProps {
   onEdit?: (item: Item) => void;
   onDelete?: (id: string) => void;
   onArchive?: (id: string) => void;
+  onAdjustStock?: (item: Item) => void;
 }
 
-type SortField = "name" | "category" | "unitPriceCents" | "unit";
+type SortField = "name" | "category" | "unitPriceCents" | "stockOnHand" | "margin";
 type SortDirection = "asc" | "desc";
 
 export function ItemTable({
@@ -41,6 +42,7 @@ export function ItemTable({
   onEdit,
   onDelete,
   onArchive,
+  onAdjustStock,
 }: ItemTableProps) {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -66,9 +68,15 @@ export function ItemTable({
       case "unitPriceCents":
         comparison = a.unitPriceCents - b.unitPriceCents;
         break;
-      case "unit":
-        comparison = a.unit.localeCompare(b.unit);
+      case "stockOnHand":
+        comparison = (a.stockOnHand ?? 0) - (b.stockOnHand ?? 0);
         break;
+      case "margin": {
+        const ma = calculateMarginPercent(a.unitPriceCents, a.costCents) ?? -1;
+        const mb = calculateMarginPercent(b.unitPriceCents, b.costCents) ?? -1;
+        comparison = ma - mb;
+        break;
+      }
     }
     return sortDirection === "asc" ? comparison : -comparison;
   });
@@ -102,6 +110,43 @@ export function ItemTable({
     }
   };
 
+  const renderStockCell = (item: Item) => {
+    if (item.itemType !== "product") {
+      return <span className="text-xs text-muted-foreground">—</span>;
+    }
+    const status = getStockStatus(item);
+    const qty = item.stockOnHand ?? 0;
+
+    if (status === "out_of_stock") {
+      return (
+        <Badge variant="secondary" className="bg-destructive/10 text-destructive hover:bg-destructive/15 gap-1">
+          <XCircle className="h-3 w-3" />
+          Out of stock
+        </Badge>
+      );
+    }
+    if (status === "low_stock") {
+      return (
+        <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/15 gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          {qty} {item.unit}
+        </Badge>
+      );
+    }
+    return (
+      <span className="text-sm font-medium">
+        {qty} <span className="text-muted-foreground text-xs">{item.unit}</span>
+      </span>
+    );
+  };
+
+  const renderMarginCell = (item: Item) => {
+    const margin = calculateMarginPercent(item.unitPriceCents, item.costCents);
+    if (margin === null) return <span className="text-xs text-muted-foreground">—</span>;
+    const tone = margin < 20 ? "text-amber-600" : margin >= 50 ? "text-green-600" : "text-foreground";
+    return <span className={`text-sm font-medium ${tone}`}>{margin.toFixed(0)}%</span>;
+  };
+
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <Button
       variant="ghost"
@@ -128,15 +173,18 @@ export function ItemTable({
             <TableHead>
               <SortableHeader field="name">Name</SortableHeader>
             </TableHead>
-            <TableHead>Description</TableHead>
             <TableHead>
               <SortableHeader field="category">Category</SortableHeader>
             </TableHead>
             <TableHead className="text-right">
-              <SortableHeader field="unitPriceCents">Price</SortableHeader>
+              <SortableHeader field="unitPriceCents">Sell</SortableHeader>
+            </TableHead>
+            <TableHead className="text-right">Cost</TableHead>
+            <TableHead className="text-right">
+              <SortableHeader field="margin">Margin</SortableHeader>
             </TableHead>
             <TableHead>
-              <SortableHeader field="unit">Unit</SortableHeader>
+              <SortableHeader field="stockOnHand">Stock</SortableHeader>
             </TableHead>
             <TableHead>Tax</TableHead>
             <TableHead>Status</TableHead>
@@ -146,15 +194,15 @@ export function ItemTable({
         <TableBody>
           {sortedItems.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                 No items found.
               </TableCell>
             </TableRow>
           ) : (
             sortedItems.map((item) => (
-              <TableRow 
-                key={item.id} 
-                className={`hover:bg-muted/50 ${!item.isActive ? 'opacity-60' : ''}`}
+              <TableRow
+                key={item.id}
+                className={`hover:bg-muted/50 ${!item.isActive ? "opacity-60" : ""}`}
               >
                 <TableCell>
                   <Checkbox
@@ -164,16 +212,16 @@ export function ItemTable({
                 </TableCell>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
-                    {item.name}
-                    {item.sku && (
-                      <span className="text-xs text-muted-foreground">
-                        ({item.sku})
-                      </span>
+                    {item.itemType === "product" && (
+                      <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     )}
+                    <div className="min-w-0">
+                      <div className="truncate">{item.name}</div>
+                      {item.sku && (
+                        <div className="text-xs text-muted-foreground">SKU {item.sku}</div>
+                      )}
+                    </div>
                   </div>
-                </TableCell>
-                <TableCell className="max-w-xs truncate text-muted-foreground">
-                  {item.description || "-"}
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary" className={getCategoryColor(item.category)}>
@@ -183,7 +231,11 @@ export function ItemTable({
                 <TableCell className="text-right font-medium">
                   {centsToDisplay(item.unitPriceCents)}
                 </TableCell>
-                <TableCell className="capitalize">{item.unit}</TableCell>
+                <TableCell className="text-right text-muted-foreground">
+                  {item.costCents > 0 ? centsToDisplay(item.costCents) : "—"}
+                </TableCell>
+                <TableCell className="text-right">{renderMarginCell(item)}</TableCell>
+                <TableCell>{renderStockCell(item)}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="font-normal">
                     {TAX_CODE_LABELS[item.taxCode]}
@@ -212,6 +264,12 @@ export function ItemTable({
                       <DropdownMenuItem onClick={() => onEdit?.(item)}>
                         Edit
                       </DropdownMenuItem>
+                      {item.itemType === "product" && (
+                        <DropdownMenuItem onClick={() => onAdjustStock?.(item)}>
+                          <Boxes className="h-4 w-4 mr-2" />
+                          Adjust stock
+                        </DropdownMenuItem>
+                      )}
                       {item.isActive ? (
                         <DropdownMenuItem onClick={() => onArchive?.(item.id)}>
                           <Archive className="h-4 w-4 mr-2" />

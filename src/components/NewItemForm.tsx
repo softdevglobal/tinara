@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { X } from "lucide-react";
-import { itemFormSchema, ItemFormData, UNIT_OPTIONS, CATEGORY_OPTIONS } from "@/lib/item-schema";
+import { Package, Wrench, Briefcase, Receipt, TrendingUp } from "lucide-react";
+import { itemFormSchema, ItemFormData, UNIT_OPTIONS, CATEGORY_OPTIONS, ITEM_TYPE_OPTIONS } from "@/lib/item-schema";
 import { TAX_CODE_LABELS, TaxCode } from "@/lib/tax-utils";
 import { centsToDollars, dollarsToCents } from "@/lib/money-utils";
-import { Item } from "@/data/items";
+import { Item, calculateMarginPercent } from "@/data/items";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -56,15 +57,24 @@ export function NewItemForm({
       name: "",
       description: "",
       category: "Services",
+      itemType: "service",
       unitPriceCents: 0,
+      costCents: 0,
       unit: "unit",
       taxCode: "GST",
       defaultQty: 1,
       sku: "",
+      supplier: "",
+      stockOnHand: 0,
+      reorderThreshold: undefined,
     },
   });
 
-  const selectedCategory = form.watch("category");
+  const selectedItemType = form.watch("itemType");
+  const isProduct = selectedItemType === "product";
+  const watchedPrice = form.watch("unitPriceCents");
+  const watchedCost = form.watch("costCents");
+  const margin = calculateMarginPercent(watchedPrice, watchedCost);
 
   // Reset form when opening or when editingItem changes
   useEffect(() => {
@@ -73,16 +83,21 @@ export function NewItemForm({
         const isStandardUnit = UNIT_OPTIONS.some(u => u.value === editingItem.unit);
         setShowCustomUnit(!isStandardUnit);
         setCustomUnit(!isStandardUnit ? editingItem.unit : "");
-        
+
         form.reset({
           name: editingItem.name,
           description: editingItem.description || "",
           category: editingItem.category,
+          itemType: editingItem.itemType,
           unitPriceCents: editingItem.unitPriceCents,
+          costCents: editingItem.costCents ?? 0,
           unit: isStandardUnit ? editingItem.unit : "custom",
           taxCode: editingItem.taxCode,
           defaultQty: editingItem.defaultQty,
           sku: editingItem.sku || "",
+          supplier: editingItem.supplier || "",
+          stockOnHand: editingItem.stockOnHand ?? 0,
+          reorderThreshold: editingItem.reorderThreshold,
         });
       } else {
         setShowCustomUnit(false);
@@ -91,11 +106,16 @@ export function NewItemForm({
           name: "",
           description: "",
           category: "Services",
+          itemType: "service",
           unitPriceCents: 0,
+          costCents: 0,
           unit: "unit",
           taxCode: "GST",
           defaultQty: 1,
           sku: "",
+          supplier: "",
+          stockOnHand: 0,
+          reorderThreshold: undefined,
         });
       }
     }
@@ -115,18 +135,24 @@ export function NewItemForm({
   const handleFormSubmit = (data: ItemFormData) => {
     const now = new Date().toISOString();
     const finalUnit = showCustomUnit && customUnit ? customUnit : data.unit;
-    
+
     const item: Item = {
       id: editingItem?.id || Math.random().toString(36).substring(2, 9),
       name: data.name,
       description: data.description || undefined,
       category: data.category,
+      itemType: data.itemType,
       unitPriceCents: data.unitPriceCents,
+      costCents: data.costCents,
       unit: finalUnit,
       taxCode: data.taxCode,
       defaultQty: data.defaultQty,
       sku: data.sku || undefined,
+      supplier: data.supplier || undefined,
+      stockOnHand: data.itemType === "product" ? data.stockOnHand : 0,
+      reorderThreshold: data.itemType === "product" ? data.reorderThreshold : undefined,
       isActive: editingItem?.isActive ?? true,
+      lastUsedAt: editingItem?.lastUsedAt,
       createdAt: editingItem?.createdAt || now,
       updatedAt: now,
     };
@@ -135,23 +161,33 @@ export function NewItemForm({
     onOpenChange(false);
   };
 
+  const itemTypeIcon = (type: string) => {
+    switch (type) {
+      case "product": return <Package className="h-3.5 w-3.5" />;
+      case "labor": return <Wrench className="h-3.5 w-3.5" />;
+      case "service": return <Briefcase className="h-3.5 w-3.5" />;
+      case "fee": return <Receipt className="h-3.5 w-3.5" />;
+      default: return null;
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Item" : "New Item"}
           </DialogTitle>
           <DialogDescription>
-            {isEditing 
-              ? "Changes apply to future invoices/estimates only. Existing documents are not affected."
-              : "Add a product or service to your catalog. You can use it when creating invoices and estimates."
-            }
+            {isEditing
+              ? "Changes apply to future invoices/quotes only. Existing documents are not affected."
+              : "Add a product or service to your catalog. Products track inventory; services do not."}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+            {/* --- Basic info --- */}
             <FormField
               control={form.control}
               name="name"
@@ -173,10 +209,10 @@ export function NewItemForm({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Optional description for this item"
                       rows={2}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -184,7 +220,35 @@ export function NewItemForm({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="itemType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {ITEM_TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            <span className="flex items-center gap-2">
+                              {itemTypeIcon(opt.value)}
+                              {opt.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="category"
@@ -236,45 +300,97 @@ export function NewItemForm({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="unitPriceCents"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit Price *</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          $
-                        </span>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          placeholder="0.00"
-                          className="pl-7"
-                          value={centsToDollars(field.value)}
-                          onChange={(e) => {
-                            const dollars = parseFloat(e.target.value) || 0;
-                            field.onChange(dollarsToCents(dollars));
-                          }}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <Separator />
 
+            {/* --- Pricing --- */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Pricing & Margin
+              </h4>
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="unitPriceCents"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sell Price *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            placeholder="0.00"
+                            className="pl-7"
+                            value={centsToDollars(field.value)}
+                            onChange={(e) => {
+                              const dollars = parseFloat(e.target.value) || 0;
+                              field.onChange(dollarsToCents(dollars));
+                            }}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="costCents"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cost</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            placeholder="0.00"
+                            className="pl-7"
+                            value={centsToDollars(field.value)}
+                            onChange={(e) => {
+                              const dollars = parseFloat(e.target.value) || 0;
+                              field.onChange(dollarsToCents(dollars));
+                            }}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription className="text-xs">For margin tracking</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormItem>
+                  <FormLabel>Margin</FormLabel>
+                  <div className="h-10 flex items-center px-3 rounded-md border bg-muted/40 text-sm font-medium">
+                    {margin === null ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <span className={margin < 20 ? "text-amber-600" : "text-green-600"}>
+                        {margin.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  <FormDescription className="text-xs">Auto-calculated</FormDescription>
+                </FormItem>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="unit"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unit *</FormLabel>
-                    <Select 
-                      onValueChange={handleUnitChange} 
+                    <Select
+                      onValueChange={handleUnitChange}
                       value={showCustomUnit ? "custom" : field.value}
                     >
                       <FormControl>
@@ -291,6 +407,26 @@ export function NewItemForm({
                         <SelectItem value="custom">Custom...</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="defaultQty"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Default Quantity</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">Pre-filled when adding to documents</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -313,55 +449,98 @@ export function NewItemForm({
               </FormItem>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="defaultQty"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Default Quantity</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                      />
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                      Pre-filled when adding to documents
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {/* --- Inventory (products only) --- */}
+            {isProduct && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4 text-primary" />
+                    Inventory Tracking
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="sku"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SKU / Code</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. CAM-001" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              {selectedCategory === "Parts" && (
-                <FormField
-                  control={form.control}
-                  name="sku"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SKU</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. CAM-001" {...field} />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Stock keeping unit
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </div>
+                    <FormField
+                      control={form.control}
+                      name="supplier"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Supplier</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Acme Supply" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="stockOnHand"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock on Hand</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            {isEditing ? "Use Adjust Stock for ongoing changes" : "Opening stock level"}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="reorderThreshold"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reorder Threshold</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              placeholder="Optional"
+                              value={field.value ?? ""}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                field.onChange(v === "" ? undefined : parseFloat(v) || 0);
+                              }}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">Alert when stock falls to this level</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit">

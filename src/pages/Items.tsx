@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Package, Plus, Search, Archive } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Package, Plus, Search, Archive, AlertTriangle, XCircle, Boxes } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { ItemTable } from "@/components/tables/ItemTable";
 import { NewItemForm } from "@/components/NewItemForm";
 import { ItemDeleteDialog } from "@/components/ItemDeleteDialog";
+import { StockAdjustmentDialog } from "@/components/StockAdjustmentDialog";
 import { useToast } from "@/hooks/use-toast";
-import { Item } from "@/data/items";
+import { Item, getStockStatus } from "@/data/items";
 import {
   Select,
   SelectContent,
@@ -17,45 +18,78 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 
 const Items = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [stockFilter, setStockFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"active" | "archived" | "all">("active");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
-  
-  const { 
-    items, 
-    addItem, 
-    updateItem, 
-    archiveItem, 
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [itemToAdjust, setItemToAdjust] = useState<Item | null>(null);
+
+  const {
+    items,
+    inventoryMovements,
+    addItem,
+    updateItem,
+    archiveItem,
     restoreItem,
     deleteItem,
     isItemReferenced,
     getItemReferenceCount,
+    adjustStock,
   } = useApp();
   const { toast } = useToast();
 
-  // Filter items based on search, category, and status
+  // Inventory summary stats (active items only)
+  const stats = useMemo(() => {
+    const activeItems = items.filter((i) => i.isActive);
+    const products = activeItems.filter((i) => i.itemType === "product");
+    const lowStock = products.filter((i) => getStockStatus(i) === "low_stock");
+    const outOfStock = products.filter((i) => getStockStatus(i) === "out_of_stock");
+    const totalStockValue = products.reduce(
+      (sum, i) => sum + (i.stockOnHand ?? 0) * i.costCents,
+      0
+    );
+    return {
+      productCount: products.length,
+      lowStockCount: lowStock.length,
+      outOfStockCount: outOfStock.length,
+      totalStockValueCents: totalStockValue,
+    };
+  }, [items]);
+
+  // Filter items
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-      (item.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    
-    const matchesCategory =
-      categoryFilter === "all" || item.category === categoryFilter;
-    
+      (item.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+      (item.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+
+    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
+
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "active" && item.isActive) ||
       (statusFilter === "archived" && !item.isActive);
-    
-    return matchesSearch && matchesCategory && matchesStatus;
+
+    let matchesStock = true;
+    if (stockFilter !== "all") {
+      const status = getStockStatus(item);
+      if (stockFilter === "low") matchesStock = status === "low_stock";
+      else if (stockFilter === "out") matchesStock = status === "out_of_stock";
+      else if (stockFilter === "in") matchesStock = status === "in_stock";
+      else if (stockFilter === "tracked") matchesStock = item.itemType === "product";
+    }
+
+    return matchesSearch && matchesCategory && matchesStatus && matchesStock;
   });
 
   const activeCount = items.filter((i) => i.isActive).length;
@@ -74,35 +108,28 @@ const Items = () => {
   const handleFormSubmit = (item: Item) => {
     if (editingItem) {
       updateItem(item);
-      toast({
-        title: "Item updated",
-        description: `${item.name} has been updated.`,
-      });
+      toast({ title: "Item updated", description: `${item.name} has been updated.` });
     } else {
       addItem(item);
-      toast({
-        title: "Item added",
-        description: `${item.name} has been added to your catalog.`,
-      });
+      // If new product with opening stock, log initial movement
+      if (item.itemType === "product" && item.stockOnHand > 0) {
+        adjustStock(item.id, item.stockOnHand, "Opening stock", "initial");
+        // adjustStock above adds delta on top of stockOnHand. We need to revert addItem's stock to 0 so total is correct.
+        updateItem({ ...item, stockOnHand: 0 });
+      }
+      toast({ title: "Item added", description: `${item.name} has been added to your catalog.` });
     }
   };
 
   const handleArchiveToggle = (id: string) => {
     const item = items.find((i) => i.id === id);
     if (!item) return;
-
     if (item.isActive) {
       archiveItem(id);
-      toast({
-        title: "Item archived",
-        description: `${item.name} has been archived.`,
-      });
+      toast({ title: "Item archived", description: `${item.name} has been archived.` });
     } else {
       restoreItem(id);
-      toast({
-        title: "Item restored",
-        description: `${item.name} has been restored.`,
-      });
+      toast({ title: "Item restored", description: `${item.name} has been restored.` });
     }
   };
 
@@ -115,27 +142,36 @@ const Items = () => {
 
   const handleConfirmDelete = () => {
     if (!itemToDelete) return;
-    
     deleteItem(itemToDelete.id);
-    toast({
-      title: "Item deleted",
-      description: `${itemToDelete.name} has been permanently deleted.`,
-    });
+    toast({ title: "Item deleted", description: `${itemToDelete.name} has been permanently deleted.` });
     setDeleteDialogOpen(false);
     setItemToDelete(null);
   };
 
   const handleConfirmArchive = () => {
     if (!itemToDelete) return;
-    
     archiveItem(itemToDelete.id);
-    toast({
-      title: "Item archived",
-      description: `${itemToDelete.name} has been archived.`,
-    });
+    toast({ title: "Item archived", description: `${itemToDelete.name} has been archived.` });
     setDeleteDialogOpen(false);
     setItemToDelete(null);
   };
+
+  const handleAdjustStock = (item: Item) => {
+    setItemToAdjust(item);
+    setAdjustDialogOpen(true);
+  };
+
+  const handleConfirmAdjust = (itemId: string, qtyDelta: number, reason: string) => {
+    adjustStock(itemId, qtyDelta, reason);
+    const item = items.find((i) => i.id === itemId);
+    toast({
+      title: "Stock adjusted",
+      description: `${item?.name}: ${qtyDelta > 0 ? "+" : ""}${qtyDelta} ${item?.unit}.`,
+    });
+  };
+
+  const formatCents = (cents: number) =>
+    new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(cents / 100);
 
   return (
     <AppLayout>
@@ -146,9 +182,9 @@ const Items = () => {
             <Package className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Items</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Items & Inventory</h1>
             <p className="text-sm text-muted-foreground">
-              Manage your product & service catalog
+              Manage your catalog, track stock and monitor margins
             </p>
           </div>
         </div>
@@ -158,6 +194,54 @@ const Items = () => {
         </Button>
       </div>
 
+      {/* Inventory summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Package className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Tracked products</p>
+              <p className="text-xl font-semibold">{stats.productCount}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4 cursor-pointer hover:border-amber-500/40 transition-colors" onClick={() => setStockFilter("low")}>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Low stock</p>
+              <p className="text-xl font-semibold">{stats.lowStockCount}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4 cursor-pointer hover:border-destructive/40 transition-colors" onClick={() => setStockFilter("out")}>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-destructive/10 flex items-center justify-center">
+              <XCircle className="h-4 w-4 text-destructive" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Out of stock</p>
+              <p className="text-xl font-semibold">{stats.outOfStockCount}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <Boxes className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Stock value (at cost)</p>
+              <p className="text-xl font-semibold">{formatCents(stats.totalStockValueCents)}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
       {/* Status Tabs */}
       <Tabs
         value={statusFilter}
@@ -165,9 +249,7 @@ const Items = () => {
         className="mb-4"
       >
         <TabsList>
-          <TabsTrigger value="active">
-            Active ({activeCount})
-          </TabsTrigger>
+          <TabsTrigger value="active">Active ({activeCount})</TabsTrigger>
           <TabsTrigger value="archived">
             <Archive className="h-3.5 w-3.5 mr-1.5" />
             Archived ({archivedCount})
@@ -177,24 +259,39 @@ const Items = () => {
       </Tabs>
 
       {/* Filters */}
-      <div className="flex items-center justify-between mb-4">
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="Parts">Parts</SelectItem>
-            <SelectItem value="Labor">Labor</SelectItem>
-            <SelectItem value="Services">Services</SelectItem>
-            <SelectItem value="Other">Other</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              <SelectItem value="Parts">Parts</SelectItem>
+              <SelectItem value="Labor">Labor</SelectItem>
+              <SelectItem value="Services">Services</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={stockFilter} onValueChange={setStockFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Stock" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All stock</SelectItem>
+              <SelectItem value="tracked">Tracked products</SelectItem>
+              <SelectItem value="in">In stock</SelectItem>
+              <SelectItem value="low">Low stock</SelectItem>
+              <SelectItem value="out">Out of stock</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search items..."
+            placeholder="Search items, SKU or supplier..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -227,6 +324,7 @@ const Items = () => {
           onEdit={handleOpenEditForm}
           onDelete={handleDeleteClick}
           onArchive={handleArchiveToggle}
+          onAdjustStock={handleAdjustStock}
         />
       )}
 
@@ -236,6 +334,15 @@ const Items = () => {
         onOpenChange={setIsFormOpen}
         onSubmit={handleFormSubmit}
         editingItem={editingItem}
+      />
+
+      {/* Stock adjustment dialog */}
+      <StockAdjustmentDialog
+        open={adjustDialogOpen}
+        onOpenChange={setAdjustDialogOpen}
+        item={itemToAdjust}
+        movements={inventoryMovements}
+        onAdjust={handleConfirmAdjust}
       />
 
       {/* Delete Confirmation Dialog */}
