@@ -108,10 +108,41 @@ export function StockAdjustmentDialog({
     onOpenChange(false);
   };
 
-  const movementIcon = (type: InventoryMovement["movementType"], delta: number) => {
-    if (delta > 0) return <ArrowUp className="h-3.5 w-3.5 text-green-600" />;
-    return <ArrowDown className="h-3.5 w-3.5 text-amber-600" />;
+  const movementMeta = (type: InventoryMovement["movementType"]) => {
+    switch (type) {
+      case "sale":
+        return { label: "Sale", Icon: ShoppingCart, tone: "bg-blue-500/10 text-blue-600" };
+      case "restock":
+        return { label: "Restock", Icon: PackagePlus, tone: "bg-green-500/10 text-green-600" };
+      case "return":
+        return { label: "Return", Icon: RotateCcw, tone: "bg-purple-500/10 text-purple-600" };
+      case "initial":
+        return { label: "Opening stock", Icon: Sparkles, tone: "bg-muted text-muted-foreground" };
+      case "adjustment":
+      default:
+        return { label: "Adjustment", Icon: Settings2, tone: "bg-amber-500/10 text-amber-600" };
+    }
   };
+
+  const filteredMovements = itemMovements.filter((m) => {
+    if (typeFilter !== "all" && m.movementType !== typeFilter) return false;
+    if (historySearch.trim()) {
+      const q = historySearch.toLowerCase();
+      if (!m.reason?.toLowerCase().includes(q) && !m.referenceId?.toLowerCase().includes(q)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const totals = itemMovements.reduce(
+    (acc, m) => {
+      if (m.qtyDelta > 0) acc.in += m.qtyDelta;
+      else acc.out += Math.abs(m.qtyDelta);
+      return acc;
+    },
+    { in: 0, out: 0 }
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
