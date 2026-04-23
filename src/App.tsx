@@ -69,6 +69,8 @@ function App() {
                     <Route path="/settings/security" element={<ProtectedRoute><SecuritySettings /></ProtectedRoute>} />
                     <Route path="/settings/team" element={<ProtectedRoute requireRoles={["owner","admin"]}><TeamSettings /></ProtectedRoute>} />
                     <Route path="/settings/export" element={<ProtectedRoute><ExportSettings /></ProtectedRoute>} />
+                    <Route path="/migration" element={<ProtectedRoute requireRoles={["owner","admin"]}><Migration /></ProtectedRoute>} />
+                    <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
 
                     <Route path="*" element={<NotFound />} />
                   </Routes>
