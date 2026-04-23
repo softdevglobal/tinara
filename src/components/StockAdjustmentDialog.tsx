@@ -55,6 +55,7 @@ interface StockAdjustmentDialogProps {
   item: Item | null;
   movements: InventoryMovement[];
   onAdjust: (itemId: string, qtyDelta: number, reason: string) => void;
+  initialTab?: "adjust" | "history";
 }
 
 export function StockAdjustmentDialog({
@@ -63,8 +64,20 @@ export function StockAdjustmentDialog({
   item,
   movements,
   onAdjust,
+  initialTab = "adjust",
 }: StockAdjustmentDialogProps) {
-  const [tab, setTab] = useState<"adjust" | "history">("adjust");
+  const [tab, setTab] = useState<"adjust" | "history">(initialTab);
+  const [historySearch, setHistorySearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | InventoryMovement["movementType"]>("all");
+
+  // Reset tab whenever the dialog opens with a new item / requested tab
+  useEffect(() => {
+    if (open) {
+      setTab(initialTab);
+      setHistorySearch("");
+      setTypeFilter("all");
+    }
+  }, [open, initialTab, item?.id]);
 
   const form = useForm<AdjustmentFormData>({
     resolver: zodResolver(adjustmentSchema),
