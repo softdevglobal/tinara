@@ -30,6 +30,8 @@ import TeamSettings from "./pages/settings/TeamSettings";
 import ExportSettings from "./pages/settings/ExportSettings";
 import NotFound from "./pages/NotFound";
 import OnboardingRouter from "./pages/onboarding/OnboardingRouter";
+import Migration from "./pages/Migration";
+import Reports from "./pages/Reports";
 
 const queryClient = new QueryClient();
 
