@@ -44,6 +44,7 @@ import { DocumentFormHeader } from "./DocumentFormHeader";
 import { DocumentDetailsPanel } from "./DocumentDetailsPanel";
 import { DocumentPreviewTab } from "./DocumentPreviewTab";
 import { DocumentSendTab } from "./DocumentSendTab";
+import { generateInvoicePdf, generateQuotePdf } from "@/lib/pdf-generator";
 
 interface DocumentCreationFormProps {
   type: DocumentType;
@@ -53,6 +54,9 @@ interface DocumentCreationFormProps {
   clients: Client[];
   onAddClient: (client: Client) => void;
   onConvertToInvoice?: () => Invoice | null;
+  onDuplicate?: (document: Invoice | Quote) => void;
+  onVoid?: (document: Invoice | Quote) => void;
+  onDelete?: (document: Invoice | Quote) => void;
 }
 
 interface FormLineItem {
