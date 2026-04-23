@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
-import { Search, Bell, Keyboard, User, Menu } from "lucide-react";
+import { Search, Bell, Keyboard, User, Menu, LogOut, Building2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +27,20 @@ interface TopHeaderProps {
 export function TopHeader({ onSearch }: TopHeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const { profile, organisation, role, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const initials = (profile?.display_name || profile?.email || "U")
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth", { replace: true });
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -122,24 +138,45 @@ export function TopHeader({ onSearch }: TopHeaderProps) {
             </TooltipContent>
           </Tooltip>
 
+          {/* Org badge (desktop) */}
+          {organisation && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary text-sm">
+              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-medium text-foreground truncate max-w-[160px]">{organisation.name}</span>
+              {role && (
+                <span className="text-xs uppercase text-muted-foreground border-l border-border pl-2">
+                  {role}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-9 w-9">
                 <Avatar className="h-7 w-7">
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                    U
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {profile?.display_name || "User"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
+              </div>
+              <DropdownMenuSeparator />
               <DropdownMenuItem className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive flex items-center gap-2">
+                <LogOut className="h-4 w-4" />
                 Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
