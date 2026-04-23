@@ -14,6 +14,8 @@ import {
   Clock,
   HelpCircle,
   UsersRound,
+  UploadCloud,
+  BarChart3,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -57,6 +59,11 @@ const inventoryNavItems = [
 const toolsNavItems = [
   { title: "Recurring", url: "/recurring", icon: Repeat },
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
+];
+
+const insightsNavItems = [
+  { title: "Reports", url: "/reports", icon: BarChart3 },
+  { title: "Migration", url: "/migration", icon: UploadCloud },
 ];
 
 const teamNavItems = [
