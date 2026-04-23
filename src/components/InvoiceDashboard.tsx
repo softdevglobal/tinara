@@ -279,6 +279,36 @@ export function InvoiceDashboard({
   }
 
   if (view === "edit" && editingInvoice) {
+    const handleDuplicate = (doc: Invoice | Quote) => {
+      const source = doc as Invoice;
+      const copy: Invoice = {
+        ...source,
+        id: `inv_${Date.now()}`,
+        number: "",
+        status: "Opened",
+        paidDate: undefined,
+        paymentMethod: undefined,
+        paymentReference: undefined,
+      };
+      onUpdateInvoices((prev) => [copy, ...prev]);
+      setEditingInvoice(copy);
+      toast({
+        title: "Invoice duplicated",
+        description: "A draft copy has been created.",
+      });
+    };
+    const handleVoid = (doc: Invoice | Quote) => {
+      const inv = doc as Invoice;
+      onUpdateInvoices((prev) =>
+        prev.map((i) => (i.id === inv.id ? { ...i, status: "Void" as const } : i))
+      );
+      toast({ title: "Invoice voided", description: `Invoice #${inv.number} marked as void.` });
+    };
+    const handleDeleteFromForm = (doc: Invoice | Quote) => {
+      const inv = doc as Invoice;
+      onUpdateInvoices((prev) => prev.filter((i) => i.id !== inv.id));
+      toast({ title: "Invoice deleted", description: `Invoice #${inv.number} has been removed.` });
+    };
     return (
       <DocumentCreationForm
         type="invoice"
@@ -287,6 +317,9 @@ export function InvoiceDashboard({
         editingDocument={editingInvoice}
         clients={clients}
         onAddClient={onAddClient}
+        onDuplicate={handleDuplicate}
+        onVoid={handleVoid}
+        onDelete={handleDeleteFromForm}
       />
     );
   }

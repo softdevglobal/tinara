@@ -187,6 +187,28 @@ export function QuoteDashboard({
   }
 
   if (view === "edit" && editingQuote) {
+    const handleDuplicate = (doc: Quote | Invoice) => {
+      const source = doc as Quote;
+      const copy: Quote = {
+        ...source,
+        id: `quote_${Date.now()}`,
+        number: "",
+        status: "Unsent",
+        acceptedDate: undefined,
+        convertedToInvoiceId: undefined,
+      };
+      onUpdateQuotes((prev) => [copy, ...prev]);
+      setEditingQuote(copy);
+      toast({
+        title: "Estimate duplicated",
+        description: "A draft copy has been created.",
+      });
+    };
+    const handleDeleteFromForm = (doc: Quote | Invoice) => {
+      const q = doc as Quote;
+      onUpdateQuotes((prev) => prev.filter((x) => x.id !== q.id));
+      toast({ title: "Estimate deleted", description: `Estimate #${q.number} has been removed.` });
+    };
     return (
       <DocumentCreationForm
         type="quote"
@@ -196,6 +218,8 @@ export function QuoteDashboard({
         clients={clients}
         onAddClient={onAddClient}
         onConvertToInvoice={handleConvertFromForm}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDeleteFromForm}
       />
     );
   }

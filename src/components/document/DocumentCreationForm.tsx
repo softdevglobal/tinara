@@ -44,6 +44,7 @@ import { DocumentFormHeader } from "./DocumentFormHeader";
 import { DocumentDetailsPanel } from "./DocumentDetailsPanel";
 import { DocumentPreviewTab } from "./DocumentPreviewTab";
 import { DocumentSendTab } from "./DocumentSendTab";
+import { generateInvoicePdf, generateQuotePdf } from "@/lib/pdf-generator";
 
 interface DocumentCreationFormProps {
   type: DocumentType;
@@ -53,6 +54,9 @@ interface DocumentCreationFormProps {
   clients: Client[];
   onAddClient: (client: Client) => void;
   onConvertToInvoice?: () => Invoice | null;
+  onDuplicate?: (document: Invoice | Quote) => void;
+  onVoid?: (document: Invoice | Quote) => void;
+  onDelete?: (document: Invoice | Quote) => void;
 }
 
 interface FormLineItem {
@@ -93,6 +97,9 @@ export function DocumentCreationForm({
   clients,
   onAddClient,
   onConvertToInvoice,
+  onDuplicate,
+  onVoid,
+  onDelete,
 }: DocumentCreationFormProps) {
   const { toast } = useToast();
   const { brandingSettings, quotes } = useApp();
@@ -412,6 +419,53 @@ export function DocumentCreationForm({
     }
   };
 
+  // Duplicate the current document (delegates to parent for list insertion)
+  const handleDuplicate = () => {
+    if (!editingDocument) return;
+    if (onDuplicate) {
+      onDuplicate(editingDocument);
+      return;
+    }
+    toast({
+      title: "Duplicate unavailable",
+      description: "This action is not wired up here yet.",
+      variant: "destructive",
+    });
+  };
+
+  // Void (invoices only) — parent handles status flip
+  const handleVoid = () => {
+    if (!editingDocument || !onVoid) return;
+    onVoid(editingDocument);
+    onBack();
+  };
+
+  // Delete draft — parent removes it from the list
+  const handleDelete = () => {
+    if (!editingDocument || !onDelete) return;
+    onDelete(editingDocument);
+    onBack();
+  };
+
+  // Download PDF using current branding
+  const handleDownloadPdf = () => {
+    if (!editingDocument) return;
+    if (type === "invoice") {
+      generateInvoicePdf(editingDocument as Invoice, brandingSettings);
+    } else {
+      generateQuotePdf(editingDocument as Quote, brandingSettings);
+    }
+    toast({
+      title: "PDF downloaded",
+      description: `${typeLabel} #${(editingDocument as Invoice | Quote).number} has been downloaded.`,
+    });
+  };
+
+  // Print uses the browser print dialog (preview tab renders well for print)
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="animate-fade-in">
       <DocumentFormHeader
@@ -425,6 +479,11 @@ export function DocumentCreationForm({
         onBack={onBack}
         onSave={handleSave}
         onConvertToInvoice={type === "quote" && isEditing ? handleConvertToInvoice : undefined}
+        onDuplicate={isEditing ? handleDuplicate : undefined}
+        onVoid={isEditing && type === "invoice" ? handleVoid : undefined}
+        onDelete={isEditing ? handleDelete : undefined}
+        onDownloadPdf={isEditing ? handleDownloadPdf : undefined}
+        onPrint={isEditing ? handlePrint : undefined}
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentCreationTab)}>
