@@ -243,37 +243,106 @@ export function StockAdjustmentDialog({
             </Form>
           </TabsContent>
 
-          <TabsContent value="history" className="pt-4">
+          <TabsContent value="history" className="pt-4 space-y-3">
             {itemMovements.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 No movements recorded yet.
               </div>
             ) : (
-              <ScrollArea className="h-[320px] pr-3">
-                <div className="space-y-2">
-                  {itemMovements.map((m) => (
-                    <div key={m.id} className="flex items-start gap-3 p-3 rounded-md border bg-card">
-                      <div className="mt-0.5">{movementIcon(m.movementType, m.qtyDelta)}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium">
-                            {m.qtyDelta > 0 ? "+" : ""}{m.qtyDelta} {item.unit}
-                          </span>
-                          <Badge variant="outline" className="capitalize text-xs font-normal">
-                            {m.movementType}
-                          </Badge>
-                        </div>
-                        {m.reason && (
-                          <p className="text-xs text-muted-foreground mt-1">{m.reason}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(m.createdAt), "PPp")}
-                        </p>
-                      </div>
+              <>
+                {/* Summary chips */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-md border bg-card p-3">
+                    <div className="text-xs text-muted-foreground">Total in</div>
+                    <div className="text-lg font-semibold text-green-600 flex items-center gap-1">
+                      <ArrowUp className="h-4 w-4" />+{totals.in}
                     </div>
-                  ))}
+                  </div>
+                  <div className="rounded-md border bg-card p-3">
+                    <div className="text-xs text-muted-foreground">Total out</div>
+                    <div className="text-lg font-semibold text-amber-600 flex items-center gap-1">
+                      <ArrowDown className="h-4 w-4" />−{totals.out}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-card p-3">
+                    <div className="text-xs text-muted-foreground">Movements</div>
+                    <div className="text-lg font-semibold">{itemMovements.length}</div>
+                  </div>
                 </div>
-              </ScrollArea>
+
+                {/* Filters */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      placeholder="Search reason or reference…"
+                      className="pl-8 h-9"
+                    />
+                  </div>
+                  <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+                    <SelectTrigger className="w-[160px] h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      <SelectItem value="adjustment">Adjustment</SelectItem>
+                      <SelectItem value="sale">Sale</SelectItem>
+                      <SelectItem value="restock">Restock</SelectItem>
+                      <SelectItem value="return">Return</SelectItem>
+                      <SelectItem value="initial">Opening stock</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                <ScrollArea className="h-[340px] pr-3">
+                  {filteredMovements.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-muted-foreground">
+                      No movements match your filters.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredMovements.map((m) => {
+                        const meta = movementMeta(m.movementType);
+                        const isPositive = m.qtyDelta > 0;
+                        return (
+                          <div key={m.id} className="flex items-start gap-3 p-3 rounded-md border bg-card">
+                            <div className={`h-8 w-8 shrink-0 rounded-md flex items-center justify-center ${meta.tone}`}>
+                              <meta.Icon className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Badge variant="outline" className="text-xs font-normal">
+                                    {meta.label}
+                                  </Badge>
+                                  <span className={`text-sm font-semibold ${isPositive ? "text-green-600" : "text-amber-600"}`}>
+                                    {isPositive ? "+" : ""}{m.qtyDelta} {item.unit}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground shrink-0">
+                                  {format(new Date(m.createdAt), "PP · p")}
+                                </span>
+                              </div>
+                              {m.reason && (
+                                <p className="text-sm text-foreground/80 mt-1.5">{m.reason}</p>
+                              )}
+                              {m.referenceType && m.referenceId && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Linked to {m.referenceType}: <span className="font-mono">{m.referenceId}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </ScrollArea>
+              </>
             )}
           </TabsContent>
         </Tabs>
@@ -281,3 +350,4 @@ export function StockAdjustmentDialog({
     </Dialog>
   );
 }
+
