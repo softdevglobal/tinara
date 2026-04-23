@@ -75,6 +75,7 @@ const STEP_LABELS = [
 export function MigrationWizard({ source, onClose, onCompleted }: MigrationWizardProps) {
   const { user, organisation } = useAuth();
   const currentOrgId = organisation?.id ?? null;
+  const { toast } = useToast();
 
   const [step, setStep] = useState<Step>(1);
   const [entity, setEntity] = useState<ImportEntity>("clients");
