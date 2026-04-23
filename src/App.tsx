@@ -6,7 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/context/AppContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { DocumentCountersProvider } from "@/context/DocumentCountersContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AutoInvoiceGenerator } from "@/components/AutoInvoiceGenerator";
+import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Invoices from "./pages/Invoices";
 import Clients from "./pages/Clients";
@@ -34,42 +37,44 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppProvider>
-          <SettingsProvider>
-            <DocumentCountersProvider>
-              <AutoInvoiceGenerator />
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/invoices" element={<Invoices />} />
-                  <Route path="/quotes" element={<Quotes />} />
-                  <Route path="/recurring" element={<RecurringInvoices />} />
-                  <Route path="/clients" element={<Clients />} />
-                  <Route path="/projects" element={<Projects />} />
-                  <Route path="/items" element={<Items />} />
-                  <Route path="/expenses" element={<Expenses />} />
-                  <Route path="/credit-memos" element={<CreditMemos />} />
-                  <Route path="/time-tracking" element={<TimeTracking />} />
-                  <Route path="/team" element={<TeamManagement />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/settings/tax" element={<TaxSettings />} />
-                  <Route path="/settings/payments" element={<PaymentSettings />} />
-                  <Route path="/settings/communication" element={<CommunicationSettings />} />
-                  <Route path="/settings/security" element={<SecuritySettings />} />
-                  <Route path="/settings/team" element={<TeamSettings />} />
-                  <Route path="/settings/export" element={<ExportSettings />} />
-                  
-                  {/* Onboarding Routes - wrapped with its own router */}
-                  <Route path="/onboarding/*" element={<OnboardingRouter />} />
+        <BrowserRouter>
+          <AuthProvider>
+            <AppProvider>
+              <SettingsProvider>
+                <DocumentCountersProvider>
+                  <AutoInvoiceGenerator />
+                  <Toaster />
+                  <Sonner />
+                  <Routes>
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/onboarding/*" element={<OnboardingRouter />} />
 
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </DocumentCountersProvider>
-          </SettingsProvider>
-        </AppProvider>
+                    <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                    <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+                    <Route path="/quotes" element={<ProtectedRoute><Quotes /></ProtectedRoute>} />
+                    <Route path="/recurring" element={<ProtectedRoute><RecurringInvoices /></ProtectedRoute>} />
+                    <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
+                    <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+                    <Route path="/items" element={<ProtectedRoute><Items /></ProtectedRoute>} />
+                    <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+                    <Route path="/credit-memos" element={<ProtectedRoute><CreditMemos /></ProtectedRoute>} />
+                    <Route path="/time-tracking" element={<ProtectedRoute><TimeTracking /></ProtectedRoute>} />
+                    <Route path="/team" element={<ProtectedRoute requireRoles={["owner","admin"]}><TeamManagement /></ProtectedRoute>} />
+                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                    <Route path="/settings/tax" element={<ProtectedRoute><TaxSettings /></ProtectedRoute>} />
+                    <Route path="/settings/payments" element={<ProtectedRoute requireRoles={["owner","admin","finance"]}><PaymentSettings /></ProtectedRoute>} />
+                    <Route path="/settings/communication" element={<ProtectedRoute><CommunicationSettings /></ProtectedRoute>} />
+                    <Route path="/settings/security" element={<ProtectedRoute><SecuritySettings /></ProtectedRoute>} />
+                    <Route path="/settings/team" element={<ProtectedRoute requireRoles={["owner","admin"]}><TeamSettings /></ProtectedRoute>} />
+                    <Route path="/settings/export" element={<ProtectedRoute><ExportSettings /></ProtectedRoute>} />
+
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </DocumentCountersProvider>
+              </SettingsProvider>
+            </AppProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
