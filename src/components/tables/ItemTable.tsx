@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, ArrowUpDown, Archive, Package, AlertTriangle, XCircle, Boxes } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, Archive, Package, AlertTriangle, XCircle, Boxes, History } from "lucide-react";
 import { Item, getStockStatus, calculateMarginPercent } from "@/data/items";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ interface ItemTableProps {
   onDelete?: (id: string) => void;
   onArchive?: (id: string) => void;
   onAdjustStock?: (item: Item) => void;
+  onViewHistory?: (item: Item) => void;
 }
 
 type SortField = "name" | "category" | "unitPriceCents" | "stockOnHand" | "margin";
@@ -43,6 +44,7 @@ export function ItemTable({
   onDelete,
   onArchive,
   onAdjustStock,
+  onViewHistory,
 }: ItemTableProps) {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -265,10 +267,16 @@ export function ItemTable({
                         Edit
                       </DropdownMenuItem>
                       {item.itemType === "product" && (
-                        <DropdownMenuItem onClick={() => onAdjustStock?.(item)}>
-                          <Boxes className="h-4 w-4 mr-2" />
-                          Adjust stock
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem onClick={() => onAdjustStock?.(item)}>
+                            <Boxes className="h-4 w-4 mr-2" />
+                            Adjust stock
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onViewHistory?.(item)}>
+                            <History className="h-4 w-4 mr-2" />
+                            View stock history
+                          </DropdownMenuItem>
+                        </>
                       )}
                       {item.isActive ? (
                         <DropdownMenuItem onClick={() => onArchive?.(item.id)}>
