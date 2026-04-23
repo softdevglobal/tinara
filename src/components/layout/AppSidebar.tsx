@@ -239,6 +239,22 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {/* Insights Section */}
+        <SidebarGroup className="mt-2">
+          {!collapsed && (
+            <div className="px-3 py-2 text-sm font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+              Insights
+            </div>
+          )}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {insightsNavItems.map((item) => (
+                <NavItem key={item.title} item={item} collapsed={collapsed} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {/* Team Section */}
         <SidebarGroup className="mt-2">
           {!collapsed && (
