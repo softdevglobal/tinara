@@ -97,6 +97,9 @@ export function DocumentCreationForm({
   clients,
   onAddClient,
   onConvertToInvoice,
+  onDuplicate,
+  onVoid,
+  onDelete,
 }: DocumentCreationFormProps) {
   const { toast } = useToast();
   const { brandingSettings, quotes } = useApp();
