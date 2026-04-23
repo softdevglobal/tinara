@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
+import { CommandPalette } from "@/components/CommandPalette";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Tooltip,
@@ -27,6 +28,7 @@ interface TopHeaderProps {
 export function TopHeader({ onSearch }: TopHeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
   const { profile, organisation, role, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -63,11 +65,10 @@ export function TopHeader({ onSearch }: TopHeaderProps) {
       setShowShortcuts(true);
     }
 
-    // Ctrl/Cmd + K for search focus
+    // Ctrl/Cmd + K opens command palette
     if ((event.metaKey || event.ctrlKey) && event.key === "k") {
       event.preventDefault();
-      const searchInput = document.querySelector<HTMLInputElement>('[data-search-input]');
-      searchInput?.focus();
+      setShowPalette(true);
     }
   }, []);
 
@@ -88,22 +89,19 @@ export function TopHeader({ onSearch }: TopHeaderProps) {
           </SidebarTrigger>
         </div>
 
-        {/* Center: Search bar */}
+        {/* Center: Search bar (opens command palette) */}
         <div className="flex-1 max-w-xl mx-auto">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              data-search-input
-              type="search"
-              placeholder="Search invoices, clients, quotes..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="pl-10 pr-10 h-9 bg-secondary border-0"
-            />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => setShowPalette(true)}
+            className="w-full flex items-center gap-2 h-9 pl-3 pr-3 rounded-md bg-secondary text-left text-sm text-muted-foreground hover:bg-secondary/80 transition-colors"
+          >
+            <Search className="h-4 w-4" />
+            <span className="flex-1 truncate">Search or jump to...</span>
+            <kbd className="pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
               <span className="text-xs">⌘</span>K
             </kbd>
-          </div>
+          </button>
         </div>
 
         {/* Right: Actions */}
@@ -188,6 +186,7 @@ export function TopHeader({ onSearch }: TopHeaderProps) {
         open={showShortcuts}
         onOpenChange={setShowShortcuts}
       />
+      <CommandPalette open={showPalette} onOpenChange={setShowPalette} />
     </>
   );
 }

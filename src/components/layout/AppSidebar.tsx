@@ -14,6 +14,8 @@ import {
   Clock,
   HelpCircle,
   UsersRound,
+  UploadCloud,
+  BarChart3,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -57,6 +59,11 @@ const inventoryNavItems = [
 const toolsNavItems = [
   { title: "Recurring", url: "/recurring", icon: Repeat },
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
+];
+
+const insightsNavItems = [
+  { title: "Reports", url: "/reports", icon: BarChart3 },
+  { title: "Migration", url: "/migration", icon: UploadCloud },
 ];
 
 const teamNavItems = [
@@ -226,6 +233,22 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {toolsNavItems.map((item) => (
+                <NavItem key={item.title} item={item} collapsed={collapsed} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Insights Section */}
+        <SidebarGroup className="mt-2">
+          {!collapsed && (
+            <div className="px-3 py-2 text-sm font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+              Insights
+            </div>
+          )}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {insightsNavItems.map((item) => (
                 <NavItem key={item.title} item={item} collapsed={collapsed} />
               ))}
             </SidebarMenu>
