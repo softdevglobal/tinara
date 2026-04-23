@@ -52,6 +52,7 @@ import { Invoice } from "@/data/invoices";
 import { Quote } from "@/data/quotes";
 import { Project } from "@/data/projects";
 import { ClientForm } from "@/components/ClientForm";
+import { ClientInvoicesPanel } from "@/components/client/ClientInvoicesPanel";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-AU", {
@@ -563,56 +564,11 @@ const ClientDetail = () => {
 
           {/* Invoices */}
           <TabsContent value="invoices" className="mt-4">
-            <Card>
-              {clientInvoices.length === 0 ? (
-                <div className="py-10 text-center">
-                  <Receipt className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground mb-3">No invoices yet for this client.</p>
-                  <Button size="sm" onClick={handleNewInvoice}>
-                    <Plus className="h-4 w-4 mr-2" /> Create first invoice
-                  </Button>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Number</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Due</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clientInvoices.map((inv) => {
-                      const total =
-                        inv.totals?.totalCents != null
-                          ? inv.totals.totalCents / 100
-                          : inv.total ?? 0;
-                      return (
-                        <TableRow
-                          key={inv.id}
-                          className="cursor-pointer"
-                          onClick={() => navigate(`/invoices?edit=${inv.id}`)}
-                        >
-                          <TableCell className="font-medium">{inv.number}</TableCell>
-                          <TableCell>{format(new Date(inv.date), "PP")}</TableCell>
-                          <TableCell className="text-muted-foreground">{inv.dueLabel}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className={statusColor(inv.status)}>
-                              {inv.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(total)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </Card>
+            <ClientInvoicesPanel
+              invoices={clientInvoices}
+              clientName={client.name}
+              onNewInvoice={handleNewInvoice}
+            />
           </TabsContent>
 
           {/* Quotes */}
