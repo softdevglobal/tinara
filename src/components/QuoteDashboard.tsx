@@ -195,7 +195,7 @@ export function QuoteDashboard({
         number: "",
         status: "Unsent",
         acceptedDate: undefined,
-        convertedInvoiceId: undefined,
+        convertedToInvoiceId: undefined,
       };
       onUpdateQuotes((prev) => [copy, ...prev]);
       setEditingQuote(copy);
