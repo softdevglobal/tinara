@@ -1,4 +1,5 @@
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Client } from "@/data/clients";
 import { Invoice } from "@/data/invoices";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ export function ClientTable({
   onDelete,
   onCreateInvoice,
 }: ClientTableProps) {
+  const navigate = useNavigate();
   const allSelected = clients.length > 0 && selectedIds.length === clients.length;
   const someSelected = selectedIds.length > 0 && selectedIds.length < clients.length;
 
@@ -112,21 +114,28 @@ export function ClientTable({
               return (
                 <TableRow
                   key={client.id}
+                  onClick={() => navigate(`/clients/${client.id}`)}
                   className={cn(
+                    "cursor-pointer hover:bg-muted/40",
                     selectedIds.includes(client.id) && "bg-muted/50"
                   )}
                 >
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selectedIds.includes(client.id)}
                       onCheckedChange={() => handleSelectOne(client.id)}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className="inline-flex items-center gap-2">
+                      {client.name}
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                    </span>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {client.company || "-"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <a
                       href={`mailto:${client.email}`}
                       className="text-primary hover:underline"
@@ -147,7 +156,7 @@ export function ClientTable({
                       {balance > 0 ? formatCurrency(balance) : "-"}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -155,6 +164,9 @@ export function ClientTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/clients/${client.id}`)}>
+                          View details
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onEdit?.(client)}>
                           Edit
                         </DropdownMenuItem>
