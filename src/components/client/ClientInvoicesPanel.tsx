@@ -511,16 +511,14 @@ export function ClientInvoicesPanel({ invoices, clientName, onNewInvoice }: Prop
                     ) : days === 0 ? (
                       <span className="text-xs text-muted-foreground">Current</span>
                     ) : (
-                      <span
-                        className={cn(
-                          "text-xs font-medium",
-                          bucket === "1-30"
-                            ? "text-amber-600"
-                            : bucket === "31-60"
-                              ? "text-orange-600"
+                        <span
+                          className={cn(
+                            "text-xs font-medium",
+                            bucket === "1-30"
+                              ? "text-warning"
                               : "text-destructive"
-                        )}
-                      >
+                          )}
+                        >
                         {days}d overdue
                       </span>
                     )}
