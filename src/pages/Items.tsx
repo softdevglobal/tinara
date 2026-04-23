@@ -32,6 +32,7 @@ const Items = () => {
   const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [itemToAdjust, setItemToAdjust] = useState<Item | null>(null);
+  const [adjustInitialTab, setAdjustInitialTab] = useState<"adjust" | "history">("adjust");
 
   const {
     items,
@@ -158,6 +159,13 @@ const Items = () => {
 
   const handleAdjustStock = (item: Item) => {
     setItemToAdjust(item);
+    setAdjustInitialTab("adjust");
+    setAdjustDialogOpen(true);
+  };
+
+  const handleViewHistory = (item: Item) => {
+    setItemToAdjust(item);
+    setAdjustInitialTab("history");
     setAdjustDialogOpen(true);
   };
 
@@ -325,6 +333,7 @@ const Items = () => {
           onDelete={handleDeleteClick}
           onArchive={handleArchiveToggle}
           onAdjustStock={handleAdjustStock}
+          onViewHistory={handleViewHistory}
         />
       )}
 
@@ -343,6 +352,7 @@ const Items = () => {
         item={itemToAdjust}
         movements={inventoryMovements}
         onAdjust={handleConfirmAdjust}
+        initialTab={adjustInitialTab}
       />
 
       {/* Delete Confirmation Dialog */}
