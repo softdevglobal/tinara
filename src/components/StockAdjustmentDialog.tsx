@@ -146,7 +146,7 @@ export function StockAdjustmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={tab === "history" ? "sm:max-w-2xl" : "sm:max-w-lg"}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-4 w-4" />
